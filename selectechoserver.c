@@ -35,8 +35,6 @@ struct Tag {
 
 struct Client* users;
 int usersCount;
-struct Tag* tags;
-int tagsCount;
 
 void printUsers() {
 	struct Client* temp = users;
@@ -89,7 +87,37 @@ void insertTag(int fd, char* tagName) {
 			temp->tagName = tagName;
 			temp->next = user->tag;
 			user->tag = temp;
-			tagsCount++;
+			break;
+		}
+		user = user->next;
+	}
+}
+
+void deleteTag(int fd, char* tagName) {
+	struct Tag* temp = (struct Tag*) malloc (sizeof(struct Tag*));
+	struct Client* user = users;
+	int i;
+	printf("we want to remove %s tag\n", tagName);
+	for(i = 0; i < usersCount; i++) {
+		if(user->fd == fd && user->tag != NULL) {
+			temp = user->tag;
+			if(temp->next == NULL) {
+				user->tag = temp->next; // = NULL
+				free(temp);
+				return;
+			}
+			printf("temp->tagName = %s\n", temp->tagName);
+			struct Tag* temp1 = temp->next;
+			while(temp != NULL) {
+				printf("this is tag that is stored: %s\n", temp1->tagName);
+				if(strcmp(temp1->tagName, tagName) == 0) {
+					temp->next = temp1->next;
+					free(temp1);
+					break;
+				}
+				temp = temp->next;
+				temp1 = temp->next;
+			}
 			break;
 		}
 		user = user->next;
@@ -114,24 +142,6 @@ void printTags(int fd) {
 	}
 }
 
-// void deleteTag(int fd, char* tagName) {
-// 	struct Tag* temp = tags;
-// 	if(tagsCount == 0) {
-// 		printf("List is empty.\n");
-// 		return;
-// 	}
-// 	struct Tag* temp1 = temp->next;
-// 	int i;
-// 	for(i = 0; i < tagsCount; i++) {
-// 		if (temp1->user->fd == fd && temp->tagName == tagName) {
-// 			temp->next = temp1->next;
-// 			free(temp1);
-// 			tagsCount--;
-// 		}
-// 		temp = temp->next;
-// 		temp1 = temp->next;
-// 	}
-// }
 // void deleteFd(int fd) {
 // 	struct Tag* temp = tags;
 // 	if(tagsCount == 0) {
@@ -286,9 +296,8 @@ main( int argc, char *argv[] )
 						tag[strlen(tag)-2] = 0; // delete last 2 characters of string
 						char *newTag = (char*) malloc (sizeof(char)*strlen(tag));
 						strcpy(newTag, tag);
-
-						response = strcat(tag, " deregistered.\n");
-						write(fd, response, strlen(response));
+						deleteTag(fd, newTag);
+						printTags(fd);
 					}
 					else if (strcmp(cmd, "MSG") == 0) {
 						response = strtok(NULL, "\r\n");
@@ -308,20 +317,17 @@ main( int argc, char *argv[] )
 							struct Client* temp = users;
 							int i;
 							for(i = 0; i < usersCount; i++) {
-								if(temp->fd == fd) {
-									struct Tag* tag = temp->tag;
-									while(tag != NULL) {
-										if(strcmp(tag->tagName,newTag) == 0) {
-											write(fd, response, strlen(response));
-											break;
-										}
-										tag = tag->next;
+								struct Tag* tag = temp->tag;
+								while(tag != NULL) {
+									if(strcmp(tag->tagName,newTag) == 0) {
+										write(temp->fd, response, strlen(response));
 									}
-									break;
+									tag = tag->next;
 								}
 								temp = temp->next;
 							}
 						} else {
+							// messages with individual tags are not sent!!!!!!!!!!!!
 							response = strcat(response, "\n");
 							// find all registered users
 							struct Client* temp = users;
