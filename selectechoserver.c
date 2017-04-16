@@ -284,6 +284,9 @@ main( int argc, char *argv[] )
 					else if (strcmp(cmd, "DEREGISTER") == 0) {
 						tag = strtok(NULL, " ");
 						tag[strlen(tag)-2] = 0; // delete last 2 characters of string
+						char *newTag = (char*) malloc (sizeof(char)*strlen(tag));
+						strcpy(newTag, tag);
+
 						response = strcat(tag, " deregistered.\n");
 						write(fd, response, strlen(response));
 					}
@@ -291,11 +294,33 @@ main( int argc, char *argv[] )
 						response = strtok(NULL, "\r\n");
 						if (response[0] == '#') {
 							tag = strtok(response, " ");
-							printf("%s\n", tag);
+							char *newTag = (char*) malloc (sizeof(char)*strlen(tag));
+							strcpy(newTag, tag);
+
+							printf("tag is %s\n", newTag);
 							fflush(stdout);
+
 							response = strtok(NULL, "\r\n");
 							response = strcat(response, "\n");
-							write(fd, response, strlen(response));
+							printf("message is: %s\n", response);
+
+							// find all registered users
+							struct Client* temp = users;
+							int i;
+							for(i = 0; i < usersCount; i++) {
+								if(temp->fd == fd) {
+									struct Tag* tag = temp->tag;
+									while(tag != NULL) {
+										if(strcmp(tag->tagName,newTag) == 0) {
+											write(fd, response, strlen(response));
+											break;
+										}
+										tag = tag->next;
+									}
+									break;
+								}
+								temp = temp->next;
+							}
 						} else {
 							response = strcat(response, "\n");
 							// find all registered users
