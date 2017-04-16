@@ -38,13 +38,30 @@ int usersCount;
 struct Tag* tags;
 int tagsCount;
 
+void printUsers() {
+	struct Client* temp = users;
+	printf("%d users online:\n", usersCount);
+	while(temp != NULL) {
+		printf("User%d\n", temp->fd);
+		temp = temp->next;
+	}
+	printf("\n");
+}
+
 void registerUser(int fd) {
-	struct Client* temp = (struct Client*) malloc (sizeof(struct Client*));
-	temp->fd = fd;
-	temp->all = true;
-	temp->next = users;
-	users = temp;
-	usersCount++;
+	struct Client* temp = users;
+	if(usersCount == 0) {
+		printf("No users.\n");
+		return;
+	}
+	int i;
+	for (i = 0; i < usersCount; i++) {
+		if (temp->fd == fd) {
+			temp->all = true;
+			break;
+		}
+		temp = temp->next;
+	}
 }
 
 void deregisterUser(int fd) {
@@ -66,10 +83,35 @@ void deregisterUser(int fd) {
 void insertTag(int fd, char* tagName) {
 	struct Tag* temp = (struct Tag*) malloc (sizeof(struct Tag*));
 	temp->tagName = tagName;
-	temp->user->fd = fd;
+	struct Client* user = users;
+	int i;
+	printf("usersCount=%d\n", usersCount);
+	for(i = 0; i < usersCount; i++) {
+		if(user->fd == fd) {
+			temp->user = user;
+			printf("user is fd%d\n", temp->user->fd);
+			break;
+		}
+		user = user->next;
+	}
+	printf("fd=%d\n", temp->user->fd);
 	temp->next = tags;
 	tags = temp;
 	tagsCount++; // increment the size of the list (added one tag)
+}
+
+// function for checking tags for particular fd
+void printTags(int fd) {
+	struct Tag* temp = tags;
+	int i;
+	printf("User with fd %d has tags:\n", fd);
+	for(i = 0; i < tagsCount; i++) {
+		printf("%s	", temp->tagName);
+		if(temp->user->fd == fd) {
+			// printf("%s	", temp->tagName);
+		}
+		temp = temp->next;
+	}
 }
 
 void deleteTag(int fd, char* tagName) {
@@ -153,6 +195,7 @@ main( int argc, char *argv[] )
 
 	FD_ZERO(&afds);
 	FD_SET( msock, &afds );
+
 	for (;;)
 	{
 		memcpy((char *)&rfds, (char *)&afds, sizeof(rfds));
@@ -179,6 +222,7 @@ main( int argc, char *argv[] )
 
 			/* start listening to this guy */
 			FD_SET( ssock, &afds );
+
 		}
 
 		/*	Handle the participants requests  */
@@ -186,6 +230,26 @@ main( int argc, char *argv[] )
 		{
 			if (fd != msock && FD_ISSET(fd, &rfds))
 			{
+				// add to users linked list
+				struct Client* temp = (struct Client*) malloc (sizeof(struct Client*));
+				bool userExists = false;
+				int j;
+				struct Client* temp1 = (struct Client*) malloc (sizeof(struct Client*));
+				temp1 = users;
+				for(j = 0; j < usersCount; j++) {
+					if(temp1->fd == fd) {
+						userExists = true;
+						break;
+					}
+					temp1 = temp1->next;
+				}
+				if (!userExists) {
+					temp->fd = fd;
+					temp->all = false;
+					temp->next = users;
+					users = temp;
+					usersCount++;
+				}
 				if ( (cc = read( fd, buf, BUFSIZE )) <= 0 )
 				{
 					printf( "The client%d has gone.\n", fd );
@@ -214,11 +278,15 @@ main( int argc, char *argv[] )
 					}
 					else if (strcmp(cmd, "REGISTER") == 0) {
 						tag = strtok(NULL, " ");
-						response = strcat(tag, " registered.\n");
-						write(fd, response, strlen(response));
+						tag[strlen(tag)-2] = 0; // delete last 2 characters of string
+						insertTag(fd, tag);
+						printTags(fd);
+						// response = strcat(tag, " registered.\n");
+						// write(fd, response, strlen(response));
 					}
 					else if (strcmp(cmd, "DEREGISTER") == 0) {
 						tag = strtok(NULL, " ");
+						tag[strlen(tag)-2] = 0; // delete last 2 characters of string
 						response = strcat(tag, " deregistered.\n");
 						write(fd, response, strlen(response));
 					}
