@@ -11,6 +11,9 @@
 
 #define	QLEN			5
 #define	BUFSIZE			2048
+typedef int bool;
+#define true 1
+#define false 0
 
 int passivesock( char *service, char *protocol, int qlen, int *rport );
 
@@ -18,11 +21,93 @@ int passivesock( char *service, char *protocol, int qlen, int *rport );
 **	The server ...
 */
 
-typedef struct tag {
-	char *tagName;
-	int userfd;
-	struct tag *next;
-} TAG;
+struct Client {
+	int fd;
+	bool all;
+	struct Client* next;
+};
+
+struct Tag {
+	char* tagName;
+ 	struct Client* user;
+	struct Tag* next;
+};
+
+struct Client* users;
+int usersCount;
+struct Tag* tags;
+int tagsCount;
+
+void registerUser(int fd) {
+	struct Client* temp = (struct Client*) malloc (sizeof(struct Client*));
+	temp->fd = fd;
+	temp->all = true;
+	temp->next = users;
+	users = temp;
+	usersCount++;
+}
+
+void deregisterUser(int fd) {
+	struct Client* temp = users;
+	if(usersCount == 0) {
+		printf("No users.\n");
+		return;
+	}
+	int i;
+	for (i = 0; i < usersCount; i++) {
+		if (temp->fd == fd) {
+			temp->all = false;
+			break;
+		}
+		temp = temp->next;
+	}
+}
+
+void insertTag(int fd, char* tagName) {
+	struct Tag* temp = (struct Tag*) malloc (sizeof(struct Tag*));
+	temp->tagName = tagName;
+	temp->user->fd = fd;
+	temp->next = tags;
+	tags = temp;
+	tagsCount++; // increment the size of the list (added one tag)
+}
+
+void deleteTag(int fd, char* tagName) {
+	struct Tag* temp = tags;
+	if(tagsCount == 0) {
+		printf("List is empty.\n");
+		return;
+	}
+	struct Tag* temp1 = temp->next;
+	int i;
+	for(i = 0; i < tagsCount; i++) {
+		if (temp1->user->fd == fd && temp->tagName == tagName) {
+			temp->next = temp1->next;
+			free(temp1);
+			tagsCount--;
+		}
+		temp = temp->next;
+		temp1 = temp->next;
+	}
+}
+void deleteFd(int fd) {
+	struct Tag* temp = tags;
+	if(tagsCount == 0) {
+		printf("List is empty.\n");
+		return;
+	}
+	struct Tag* temp1 = temp->next;
+	int i;
+	for(i = 0; i < tagsCount; i++) {
+		if(temp1->user->fd == fd) {
+			temp->next = temp1->next;
+			free(temp1);
+			tagsCount--;
+		}
+		temp = temp->next;
+		temp1 = temp->next;
+	}
+}
 
 int
 main( int argc, char *argv[] )
@@ -39,7 +124,6 @@ main( int argc, char *argv[] )
 	int			nfds;
 	int			rport = 0;
 	int			cc;
-	TAG *tags; // Why can't I use just an array, instead of linked-list?
 
 	switch (argc)
 	{
@@ -104,7 +188,7 @@ main( int argc, char *argv[] )
 			{
 				if ( (cc = read( fd, buf, BUFSIZE )) <= 0 )
 				{
-					printf( "The client has gone.\n" );
+					printf( "The client%d has gone.\n", fd );
 					(void) close(fd);
 					FD_CLR( fd, &afds );
 
@@ -119,10 +203,12 @@ main( int argc, char *argv[] )
 
 					/* Understand what that message means */
 					if (strcmp(cmd, "REGISTERALL\r\n") == 0) {
+						registerUser(fd);
 						response = "Ok! Registered all.\n";
 						write(fd, response, strlen(response));
 					}
 					else if (strcmp(cmd, "DEREGISTERALL\r\n") == 0) {
+						deregisterUser(fd);
 						response = "Ok! Deregistered all.\n";
 						write(fd, response, strlen(response));
 					}
@@ -147,7 +233,15 @@ main( int argc, char *argv[] )
 							write(fd, response, strlen(response));
 						} else {
 							response = strcat(response, "\n");
-							write(fd, response, strlen(response));
+							// find all registered users
+							struct Client* temp = users;
+							int i;
+							for(i = 0; i < usersCount; i++) {
+								if(temp->all == true) {
+									write(temp->fd, response, strlen(response));
+								}
+								temp = temp->next;
+							}
 						}
 					}
 					else {
