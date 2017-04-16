@@ -24,12 +24,12 @@ int passivesock( char *service, char *protocol, int qlen, int *rport );
 struct Client {
 	int fd;
 	bool all;
+	struct Tag* tag;
 	struct Client* next;
 };
 
 struct Tag {
 	char* tagName;
- 	struct Client* user;
 	struct Tag* next;
 };
 
@@ -82,74 +82,74 @@ void deregisterUser(int fd) {
 
 void insertTag(int fd, char* tagName) {
 	struct Tag* temp = (struct Tag*) malloc (sizeof(struct Tag*));
-	temp->tagName = tagName;
 	struct Client* user = users;
 	int i;
-	printf("usersCount=%d\n", usersCount);
 	for(i = 0; i < usersCount; i++) {
 		if(user->fd == fd) {
-			temp->user = user;
-			printf("user is fd%d\n", temp->user->fd);
+			temp->tagName = tagName;
+			temp->next = user->tag;
+			user->tag = temp;
+			tagsCount++;
 			break;
 		}
 		user = user->next;
 	}
-	printf("fd=%d\n", temp->user->fd);
-	temp->next = tags;
-	tags = temp;
-	tagsCount++; // increment the size of the list (added one tag)
 }
 
 // function for checking tags for particular fd
 void printTags(int fd) {
-	struct Tag* temp = tags;
+	struct Client* user = users;
 	int i;
-	printf("User with fd %d has tags:\n", fd);
-	for(i = 0; i < tagsCount; i++) {
-		printf("%s	", temp->tagName);
-		if(temp->user->fd == fd) {
-			// printf("%s	", temp->tagName);
+	printf("User%d has tags:\n", fd);
+	for(i = 0; i < usersCount; i++) {
+		if(user->fd == fd) {
+			struct Tag* temp = user->tag;
+			while(temp != NULL) {
+					printf("%s\n", temp->tagName);
+					temp = temp->next;
+			}
+			break;
 		}
-		temp = temp->next;
+		user = user->next;
 	}
 }
 
-void deleteTag(int fd, char* tagName) {
-	struct Tag* temp = tags;
-	if(tagsCount == 0) {
-		printf("List is empty.\n");
-		return;
-	}
-	struct Tag* temp1 = temp->next;
-	int i;
-	for(i = 0; i < tagsCount; i++) {
-		if (temp1->user->fd == fd && temp->tagName == tagName) {
-			temp->next = temp1->next;
-			free(temp1);
-			tagsCount--;
-		}
-		temp = temp->next;
-		temp1 = temp->next;
-	}
-}
-void deleteFd(int fd) {
-	struct Tag* temp = tags;
-	if(tagsCount == 0) {
-		printf("List is empty.\n");
-		return;
-	}
-	struct Tag* temp1 = temp->next;
-	int i;
-	for(i = 0; i < tagsCount; i++) {
-		if(temp1->user->fd == fd) {
-			temp->next = temp1->next;
-			free(temp1);
-			tagsCount--;
-		}
-		temp = temp->next;
-		temp1 = temp->next;
-	}
-}
+// void deleteTag(int fd, char* tagName) {
+// 	struct Tag* temp = tags;
+// 	if(tagsCount == 0) {
+// 		printf("List is empty.\n");
+// 		return;
+// 	}
+// 	struct Tag* temp1 = temp->next;
+// 	int i;
+// 	for(i = 0; i < tagsCount; i++) {
+// 		if (temp1->user->fd == fd && temp->tagName == tagName) {
+// 			temp->next = temp1->next;
+// 			free(temp1);
+// 			tagsCount--;
+// 		}
+// 		temp = temp->next;
+// 		temp1 = temp->next;
+// 	}
+// }
+// void deleteFd(int fd) {
+// 	struct Tag* temp = tags;
+// 	if(tagsCount == 0) {
+// 		printf("List is empty.\n");
+// 		return;
+// 	}
+// 	struct Tag* temp1 = temp->next;
+// 	int i;
+// 	for(i = 0; i < tagsCount; i++) {
+// 		if(temp1->user->fd == fd) {
+// 			temp->next = temp1->next;
+// 			free(temp1);
+// 			tagsCount--;
+// 		}
+// 		temp = temp->next;
+// 		temp1 = temp->next;
+// 	}
+// }
 
 int
 main( int argc, char *argv[] )
@@ -247,6 +247,7 @@ main( int argc, char *argv[] )
 					temp->fd = fd;
 					temp->all = false;
 					temp->next = users;
+					temp->tag = NULL;
 					users = temp;
 					usersCount++;
 				}
@@ -268,21 +269,17 @@ main( int argc, char *argv[] )
 					/* Understand what that message means */
 					if (strcmp(cmd, "REGISTERALL\r\n") == 0) {
 						registerUser(fd);
-						response = "Ok! Registered all.\n";
-						write(fd, response, strlen(response));
 					}
 					else if (strcmp(cmd, "DEREGISTERALL\r\n") == 0) {
 						deregisterUser(fd);
-						response = "Ok! Deregistered all.\n";
-						write(fd, response, strlen(response));
 					}
 					else if (strcmp(cmd, "REGISTER") == 0) {
 						tag = strtok(NULL, " ");
 						tag[strlen(tag)-2] = 0; // delete last 2 characters of string
-						insertTag(fd, tag);
+						char *newTag = (char*) malloc (sizeof(char)*strlen(tag));
+						strcpy(newTag, tag);
+						insertTag(fd, newTag);
 						printTags(fd);
-						// response = strcat(tag, " registered.\n");
-						// write(fd, response, strlen(response));
 					}
 					else if (strcmp(cmd, "DEREGISTER") == 0) {
 						tag = strtok(NULL, " ");
