@@ -15,13 +15,14 @@
 int passivesock( char *service, char *protocol, int qlen, int *rport );
 
 /*
-**	The server ... 
+**	The server ...
 */
 
-typedef struct {
+typedef struct tag {
 	char *tagName;
 	int userfd;
-}tag;
+	struct tag *next;
+} TAG;
 
 int
 main( int argc, char *argv[] )
@@ -38,9 +39,9 @@ main( int argc, char *argv[] )
 	int			nfds;
 	int			rport = 0;
 	int			cc;
-	tag *tags; // Why can't I use just an array, instead of linked-list?
-	
-	switch (argc) 
+	TAG *tags; // Why can't I use just an array, instead of linked-list?
+
+	switch (argc)
 	{
 		case	1:
 			// No args? let the OS choose a port and tell the user
@@ -59,11 +60,11 @@ main( int argc, char *argv[] )
 	if (rport)
 	{
 		//	Tell the user the selected port
-		printf( "server: port %d\n", rport );	
+		printf( "server: port %d\n", rport );
 		fflush( stdout );
 	}
 
-	
+
 	nfds = getdtablesize();
 
 	FD_ZERO(&afds);
@@ -80,7 +81,7 @@ main( int argc, char *argv[] )
 		}
 
 		/*	Handle the main socket - a new guy has checked in  */
-		if (FD_ISSET( msock, &rfds)) 
+		if (FD_ISSET( msock, &rfds))
 		{
 			int	ssock;
 
@@ -112,7 +113,7 @@ main( int argc, char *argv[] )
 				{
 					buf[cc] = '\0';
 					printf( "The client%d says: %s\n", fd, buf );
-					
+
 					char *response, *tag;
 					char *cmd = strtok(buf, " ");
 
@@ -158,5 +159,3 @@ main( int argc, char *argv[] )
 		}
 	}
 }
-
-
