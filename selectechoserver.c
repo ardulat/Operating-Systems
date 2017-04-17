@@ -19,6 +19,8 @@ int passivesock( char *service, char *protocol, int qlen, int *rport );
 
 /*
 **	The server ...
+** YOU MAY WANT TO VISIT MY REPO FOR THIS PROJECT (GITHUB):
+** https://github.com/ardulat/Operating-Systems
 */
 
 struct Client {
@@ -46,38 +48,6 @@ void printUsers() {
 	printf("\n");
 }
 
-void registerUser(int fd) {
-	struct Client* temp = users;
-	if(usersCount == 0) {
-		printf("No users.\n");
-		return;
-	}
-	int i;
-	for (i = 0; i < usersCount; i++) {
-		if (temp->fd == fd) {
-			temp->all = true;
-			break;
-		}
-		temp = temp->next;
-	}
-}
-
-void deregisterUser(int fd) {
-	struct Client* temp = users;
-	if(usersCount == 0) {
-		printf("No users.\n");
-		return;
-	}
-	int i;
-	for (i = 0; i < usersCount; i++) {
-		if (temp->fd == fd) {
-			temp->all = false;
-			break;
-		}
-		temp = temp->next;
-	}
-}
-
 void insertTag(int fd, char* tagName) {
 	struct Tag* temp = (struct Tag*) malloc (sizeof(struct Tag*));
 	struct Client* user = users;
@@ -97,7 +67,6 @@ void deleteTag(int fd, char* tagName) {
 	struct Tag* temp = (struct Tag*) malloc (sizeof(struct Tag*));
 	struct Client* user = users;
 	int i;
-	printf("we want to remove %s tag\n", tagName);
 	for(i = 0; i < usersCount; i++) {
 		if(user->fd == fd && user->tag != NULL) {
 			temp = user->tag;
@@ -106,10 +75,8 @@ void deleteTag(int fd, char* tagName) {
 				free(temp);
 				return;
 			}
-			printf("temp->tagName = %s\n", temp->tagName);
 			struct Tag* temp1 = temp->next;
 			while(temp != NULL) {
-				printf("this is tag that is stored: %s\n", temp1->tagName);
 				if(strcmp(temp1->tagName, tagName) == 0) {
 					temp->next = temp1->next;
 					free(temp1);
@@ -121,6 +88,44 @@ void deleteTag(int fd, char* tagName) {
 			break;
 		}
 		user = user->next;
+	}
+}
+
+void registerUser(int fd) {
+	struct Client* temp = users;
+	int i;
+	for (i = 0; i < usersCount; i++) {
+		if (temp->fd == fd) {
+			temp->all = true;
+		}
+		// register all tags to this user (fd)
+		struct Tag* tag = temp->tag;
+		if(tag != NULL) {
+			while(tag != NULL) {
+				insertTag(fd, tag->tagName);
+				tag = tag->next;
+			}
+		}
+		temp = temp->next;
+	}
+}
+
+void deregisterUser(int fd) {
+	struct Client* temp = users;
+	int i;
+	for (i = 0; i < usersCount; i++) {
+		if (temp->fd == fd) {
+			temp->all = false;
+		}
+		// deregister all tags to this user (fd)
+		struct Tag* tag = temp->tag;
+		if(tag != NULL) {
+			while(tag != NULL) {
+				deleteTag(fd, tag->tagName);
+				tag = tag->next;
+			}
+		}
+		temp = temp->next;
 	}
 }
 
@@ -141,25 +146,6 @@ void printTags(int fd) {
 		user = user->next;
 	}
 }
-
-// void deleteFd(int fd) {
-// 	struct Tag* temp = tags;
-// 	if(tagsCount == 0) {
-// 		printf("List is empty.\n");
-// 		return;
-// 	}
-// 	struct Tag* temp1 = temp->next;
-// 	int i;
-// 	for(i = 0; i < tagsCount; i++) {
-// 		if(temp1->user->fd == fd) {
-// 			temp->next = temp1->next;
-// 			free(temp1);
-// 			tagsCount--;
-// 		}
-// 		temp = temp->next;
-// 		temp1 = temp->next;
-// 	}
-// }
 
 int
 main( int argc, char *argv[] )
@@ -263,7 +249,7 @@ main( int argc, char *argv[] )
 				}
 				if ( (cc = read( fd, buf, BUFSIZE )) <= 0 )
 				{
-					printf( "The client%d has gone.\n", fd );
+					printf( "The User%d has gone.\n", fd );
 					(void) close(fd);
 					FD_CLR( fd, &afds );
 
@@ -271,7 +257,7 @@ main( int argc, char *argv[] )
 				else
 				{
 					buf[cc] = '\0';
-					printf( "The client%d says: %s\n", fd, buf );
+					printf( "The User%d says: %s\n", fd, buf );
 
 					char *response, *tag;
 					char *cmd = strtok(buf, " ");
@@ -305,14 +291,9 @@ main( int argc, char *argv[] )
 							tag = strtok(response, " ");
 							char *newTag = (char*) malloc (sizeof(char)*strlen(tag));
 							strcpy(newTag, tag);
-
-							printf("tag is %s\n", newTag);
-							fflush(stdout);
-
 							response = strtok(NULL, "\r\n");
 							response = strcat(response, "\n");
 							printf("message is: %s\n", response);
-
 							// find all registered users
 							struct Client* temp = users;
 							int i;
@@ -327,7 +308,6 @@ main( int argc, char *argv[] )
 								temp = temp->next;
 							}
 						} else {
-							// messages with individual tags are not sent!!!!!!!!!!!!
 							response = strcat(response, "\n");
 							// find all registered users
 							struct Client* temp = users;
