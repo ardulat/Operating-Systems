@@ -19,12 +19,12 @@ int
 main( int argc, char *argv[] )
 {
 	char		buf[BUFSIZE];
-	char		*service;		
+	char		*service;
 	char		*host = "localhost";
 	int		cc;
 	int		csock;
-	
-	switch( argc ) 
+
+	switch( argc )
 	{
 		case    2:
 			service = argv[1];
@@ -47,6 +47,7 @@ main( int argc, char *argv[] )
 
 	printf( "The server is ready, please start sending to the server.\n" );
 	printf( "Type q or Q to quit.\n" );
+	printf("FD = %d\n", csock);
 	fflush( stdout );
 
 	// 	Start the loop
@@ -57,27 +58,28 @@ main( int argc, char *argv[] )
 		{
 			break;
 		}
+
+		// Process before sending
+		int lastIndex = strlen(buf)-1;
+		buf[lastIndex] = '\r';
+		buf[lastIndex+1] = '\n';
+
 		// Send to the server
 		if ( write( csock, buf, strlen(buf) ) < 0 )
 		{
 			fprintf( stderr, "client write: %s\n", strerror(errno) );
 			exit( -1 );
-		}	
+		}
 		// Read the echo and print it out to the screen
-		if ( (cc = read( csock, buf, BUFSIZE )) <= 0 )
-                {
-                	printf( "The server has gone.\n" );
-                        close(csock);
-                        break;
-                }
-                else
-                {
-                        buf[cc] = '\0';
-                        printf( "%s\n", buf );
+		if ( (cc = read( csock, buf, BUFSIZE )) <= 0 ) {
+			printf( "The server has gone.\n" );
+      close(csock);
+      break;
+    }
+    else {
+			// Everything is OK (User is still online)
 		}
 	}
 	close( csock );
 
 }
-
-

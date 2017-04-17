@@ -215,9 +215,10 @@ main( int argc, char *argv[] )
 				fprintf( stderr, "accept: %s\n", strerror(errno) );
 				exit(-1);
 			}
-
+			ssock--;
 			/* start listening to this guy */
 			FD_SET( ssock, &afds );
+			printf("Guy is %d\n", ssock);
 
 		}
 
