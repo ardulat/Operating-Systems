@@ -215,7 +215,7 @@ main( int argc, char *argv[] )
 				fprintf( stderr, "accept: %s\n", strerror(errno) );
 				exit(-1);
 			}
-			ssock--;
+			// ssock--;
 			/* start listening to this guy */
 			FD_SET( ssock, &afds );
 			printf("Guy is %d\n", ssock);
@@ -257,7 +257,7 @@ main( int argc, char *argv[] )
 				}
 				else
 				{
-					buf[cc] = '\0';
+					// buf[cc] = '\0';
 					printf( "The User%d says: %s\n", fd, buf );
 
 					char *response, *tag;
@@ -271,16 +271,14 @@ main( int argc, char *argv[] )
 						deregisterUser(fd);
 					}
 					else if (strcmp(cmd, "REGISTER") == 0) {
-						tag = strtok(NULL, " ");
-						tag[strlen(tag)-2] = 0; // delete last 2 characters of string
+						tag = strtok(NULL, "\r\n");
 						char *newTag = (char*) malloc (sizeof(char)*strlen(tag));
 						strcpy(newTag, tag);
 						insertTag(fd, newTag);
 						printTags(fd);
 					}
 					else if (strcmp(cmd, "DEREGISTER") == 0) {
-						tag = strtok(NULL, " ");
-						tag[strlen(tag)-2] = 0; // delete last 2 characters of string
+						tag = strtok(NULL, "\r\n");
 						char *newTag = (char*) malloc (sizeof(char)*strlen(tag));
 						strcpy(newTag, tag);
 						deleteTag(fd, newTag);
