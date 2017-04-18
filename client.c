@@ -15,14 +15,86 @@ int connectsock( char *host, char *service, char *protocol );
 /*
 **	Client
 */
+
+// Global variables to use further
+char		buf[BUFSIZE];
+char		ans[BUFSIZE];
+char		*service;
+char		*host = "localhost";
+int		cc;
+int		csock;
+int status;
+pthread_t threads[2]; // 1 for writing, 1 for reading
+pthread_mutex_t	 mutex; // purpose: sometimes does not work without it
+
+void *writeThread ( void *arg ) {
+
+	// pthread_mutex_lock( &mutex );
+	// 	Start the loop for writing to the server
+	while ( fgets( buf, BUFSIZE, stdin ) != NULL )
+	{
+		// If user types 'q' or 'Q', end the connection
+		if ( buf[0] == 'q' || buf[0] == 'Q' )
+		{
+			break;
+		}
+
+		// Process before sending
+		int lastIndex = strlen(buf)-1;
+		buf[lastIndex] = '\r';
+		buf[lastIndex+1] = '\n';
+
+		// Send to the server
+		if ( write( csock, buf, strlen(buf) ) < 0 )
+		{
+			fprintf( stderr, "client write: %s\n", strerror(errno) );
+			exit( -1 );
+		}
+		printf("buf is --%s--\n", buf);
+		if ( buf[0] == 'q' || buf[0] == 'Q') {
+			printf("will quit\n");
+			break;
+		}
+	}
+	// pthread_mutex_unlock( &mutex );
+	pthread_exit( NULL );
+}
+
+void *readThread ( void *arg ) {
+
+	// pthread_mutex_lock( &mutex );
+	// 	Start the loop for reading from the server
+	while ( fgets( ans, BUFSIZE, stdin ) != NULL )
+	{
+		// If user types 'q' or 'Q', end the connection
+		if ( ans[0] == 'q' || ans[0] == 'Q' )
+		{
+			break;
+		}
+
+		// Process before sending
+		int lastIndex = strlen(ans)-1;
+		ans[lastIndex] = '\r';
+		ans[lastIndex+1] = '\n';
+
+		// Read the echo and print it out to the screen
+		if ( (cc = read( csock, ans, BUFSIZE )) <= 0 ) {
+			printf( "The server has gone.\n" );
+			close(csock);
+			break;
+		}
+		else {
+			// Everything is OK (User is still online)
+			printf("--%s--\n", ans);
+		}
+	}
+	// pthread_mutex_unlock( &mutex );
+	pthread_exit( NULL );
+}
+
 int
 main( int argc, char *argv[] )
 {
-	char		buf[BUFSIZE];
-	char		*service;
-	char		*host = "localhost";
-	int		cc;
-	int		csock;
 
 	switch( argc )
 	{
@@ -50,36 +122,29 @@ main( int argc, char *argv[] )
 	printf("FD = %d\n", csock);
 	fflush( stdout );
 
-	// 	Start the loop
-	while ( fgets( buf, BUFSIZE, stdin ) != NULL )
+	pthread_mutex_init( &mutex, NULL );
+
+	// create thread for writing
+	status = pthread_create( &threads[0], NULL, writeThread, NULL );
+	if ( status != 0 )
 	{
-		// If user types 'q' or 'Q', end the connection
-		if ( buf[0] == 'q' || buf[0] == 'Q' )
-		{
-			break;
-		}
-
-		// Process before sending
-		int lastIndex = strlen(buf)-1;
-		buf[lastIndex] = '\r';
-		buf[lastIndex+1] = '\n';
-
-		// Send to the server
-		if ( write( csock, buf, strlen(buf) ) < 0 )
-		{
-			fprintf( stderr, "client write: %s\n", strerror(errno) );
-			exit( -1 );
-		}
-		// Read the echo and print it out to the screen
-		if ( (cc = read( csock, buf, BUFSIZE )) <= 0 ) {
-			printf( "The server has gone.\n" );
-      close(csock);
-      break;
-    }
-    else {
-			// Everything is OK (User is still online)
-		}
+		printf( "pthread_create error %d.\n", status );
+		exit( -1 );
 	}
+
+	// create thread for reading
+	status = pthread_create( &threads[1], NULL, readThread, NULL );
+	if ( status != 0 )
+	{
+		printf( "pthread_create error %d.\n", status );
+		exit( -1 );
+	}
+
+	int j;
+	for ( j = 0; j < 2; j++ )
+		pthread_join( threads[j], NULL );
+	pthread_exit(0);
+
 	close( csock );
 
 }
