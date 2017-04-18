@@ -28,50 +28,35 @@ pthread_t threads[2]; // 1 for writing, 1 for reading
 pthread_mutex_t	 mutex; // purpose: sometimes does not work without it
 
 void *writeThread ( void *arg ) {
-
-	// pthread_mutex_lock( &mutex );
 	// 	Start the loop for writing to the server
 	while ( fgets( buf, BUFSIZE, stdin ) != NULL )
 	{
 		// If user types 'q' or 'Q', end the connection
 		if ( buf[0] == 'q' || buf[0] == 'Q' )
 		{
-			break;
+			close(csock);
+			exit(-1);
 		}
-
-		// Process before sending
-		int lastIndex = strlen(buf)-1;
-		buf[lastIndex] = '\r';
-		buf[lastIndex+1] = '\n';
-
+		 //Process before sending
+		 int lastIndex = strlen(buf)-1;
+		 buf[lastIndex] = '\r';
+		 buf[lastIndex+1] = '\n';
 		// Send to the server
 		if ( write( csock, buf, strlen(buf) ) < 0 )
 		{
 			fprintf( stderr, "client write: %s\n", strerror(errno) );
 			exit( -1 );
 		}
-		printf("buf is --%s--\n", buf);
-		if ( buf[0] == 'q' || buf[0] == 'Q') {
-			printf("will quit\n");
-			break;
-		}
+		buf[0] = '\0';
 	}
-	// pthread_mutex_unlock( &mutex );
+
 	pthread_exit( NULL );
 }
 
 void *readThread ( void *arg ) {
-
-	// pthread_mutex_lock( &mutex );
 	// 	Start the loop for reading from the server
-	while ( fgets( ans, BUFSIZE, stdin ) != NULL )
+	for(;;)
 	{
-		// If user types 'q' or 'Q', end the connection
-		if ( ans[0] == 'q' || ans[0] == 'Q' )
-		{
-			break;
-		}
-
 		// Process before sending
 		int lastIndex = strlen(ans)-1;
 		ans[lastIndex] = '\r';
@@ -81,14 +66,14 @@ void *readThread ( void *arg ) {
 		if ( (cc = read( csock, ans, BUFSIZE )) <= 0 ) {
 			printf( "The server has gone.\n" );
 			close(csock);
-			break;
+			exit(-1);
 		}
 		else {
 			// Everything is OK (User is still online)
-			printf("--%s--\n", ans);
+			ans[cc] = '\0';
 		}
 	}
-	// pthread_mutex_unlock( &mutex );
+
 	pthread_exit( NULL );
 }
 
