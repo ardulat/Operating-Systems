@@ -89,10 +89,16 @@ void *writeThread ( void *arg ) {
 				rest = strtok(NULL, "\0");
 			}
 			int len = strlen(rest);
+			// printf("rest_length: %d\n", len);
 			prga(state, stream, len);
-			char encrypted[len];
+			// char encrypted[len];             -- GIVES LENGTH 6
+			char *encrypted;
+			encrypted = (char *) malloc (sizeof(char) * len);
+			// printf("encrypted_length: %d\n", strlen(encrypted));
+			// printf("rest: --%s--\n", rest);
 			for(i = 0; i < len; i++)
 				encrypted[i] = rest[i] ^ stream[i];
+			// printf("encrypted: --%s--\nlength: %d\n", encrypted, strlen(encrypted));
 			char message[BUFSIZE];
 			Itoa(len, message, 10);
 			strcat(message, "/");
@@ -100,10 +106,8 @@ void *writeThread ( void *arg ) {
 			// form the buf
 			strcat(temp, " ");
 			strcat(temp, message);
-			printf("message is %s\n", temp);
 			for(i = 0; i < strlen(temp); i++)
 				buf[i] = temp[i];
-			printf("\nbuf is %s\n\n", buf);
 		} else {
 			 //Process before sending
 			 int lastIndex = strlen(buf)-1;
@@ -132,6 +136,7 @@ void *readThread ( void *arg ) {
 		int lastIndex = strlen(ans)-1;
 		ans[lastIndex] = '\r';
 		ans[lastIndex+1] = '\n';
+		ans[lastIndex+2] = '\0';
 
 		// Read the echo and print it out to the screen
 		if ( (cc = read( csock, ans, BUFSIZE )) <= 0 ) {
@@ -141,6 +146,34 @@ void *readThread ( void *arg ) {
 		}
 		else {
 			// Everything is OK (User is still online)
+
+			/* MARK: --ONLY IF "MSGE" was sent
+			unsigned char *cmd, *temp, *rest, length[BUFSIZE], stream[1024];
+			int i, j, len;
+			temp = (unsigned char*) malloc (sizeof(unsigned char) * strlen(ans));
+			for (i = 0; i < strlen(ans); i++)
+				temp[i] = ans[i];
+			i = 0;
+			while (temp[i] != '/') {
+				length[i] = temp[i];
+				i++;
+			}
+			len = atoi(length);
+			rest = (unsigned char*) malloc (sizeof(unsigned char) * len);
+			i++;
+			for (j = 0; j < len; j++, i++) {
+				rest[j] = temp[i];
+			}
+			unsigned char state[256], key[]={"Key"};
+			ksa(state, key, 3);
+			prga(state, stream, len);
+			char *decrypted;
+			decrypted = (char *) malloc (sizeof(char) * len);
+			for(i = 0; i < len; i++)
+				decrypted[i] = rest[i] ^ stream[i];
+			printf("%s\n", decrypted);
+			*/
+
 			ans[cc] = '\0';
 			printf("%s", ans);
 		}

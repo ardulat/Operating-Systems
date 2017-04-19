@@ -328,6 +328,7 @@ main( int argc, char *argv[] )
 							char *newTag = (char*) malloc (sizeof(char)*strlen(tag));
 							strcpy(newTag, tag);
 							response = strtok(NULL, "\0");
+							strcat(response, "\n");
 							printf("message is: %s\n", response);
 							// find all registered users
 							struct Client* temp = users;
