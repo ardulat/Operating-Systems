@@ -10,6 +10,7 @@ LINK            = gcc -o
 C_SRCS		= \
 		passivesock.c \
 		connectsock.c \
+		rc4.c \
 		client.c \
 		selectechoserver.c
 
@@ -27,8 +28,8 @@ all		:	library client selectechoserver
 			@echo "    Compiling $< . . .  "
 			@${COMPILE} $<
 
-library		:	passivesock.o connectsock.o
-			ar rv libsocklib.a passivesock.o connectsock.o
+library		:	passivesock.o connectsock.o rc4.o
+			ar rv libsocklib.a passivesock.o connectsock.o rc4.o
 
 selectechoserver:	selectechoserver.o
 			${LINK} $@ selectechoserver.o ${LIBS}

@@ -12,6 +12,8 @@
 
 int connectsock( char *host, char *service, char *protocol );
 
+void ksa(unsigned char state[], unsigned char key[], int len);
+
 /*
 **	Client
 */
@@ -27,6 +29,32 @@ int status;
 pthread_t threads[2]; // 1 for writing, 1 for reading
 pthread_mutex_t	 mutex; // purpose: sometimes does not work without it
 
+/* The Itoa code is in the public domain */
+char* Itoa(int value, char* str, int radix) {
+    static char dig[] =
+        "0123456789"
+        "abcdefghijklmnopqrstuvwxyz";
+    int n = 0, neg = 0;
+    unsigned int v;
+    char* p, *q;
+    char c;
+    if (radix == 10 && value < 0) {
+        value = -value;
+        neg = 1;
+    }
+    v = value;
+    do {
+        str[n++] = dig[v%radix];
+        v /= radix;
+    } while (v);
+    if (neg)
+        str[n++] = '-';
+    str[n] = '\0';
+    for (p = str, q = p + (n-1); p < q; ++p, --q)
+        c = *p, *p = *q, *q = c;
+    return str;
+}
+
 void *writeThread ( void *arg ) {
 	// 	Start the loop for writing to the server
 	while ( fgets( buf, BUFSIZE, stdin ) != NULL )
@@ -37,13 +65,47 @@ void *writeThread ( void *arg ) {
 			close(csock);
 			exit(-1);
 		}
+
+		unsigned char *cmd, *rest, stream[1024];
+		cmd = strtok(buf, " ");
+		if ( strcmp(cmd, "MSGE" ) == 0) {
+			unsigned char state[256], key[]={"Key"};
+			ksa(state, key, 3);
+			rest = strtok(NULL, "\n");
+			char *tag;
+			// tag or not
+			if ( rest[0] == '#' ) {
+				// it is tag
+				tag = strtok(rest, " ");
+				char *newTag = (char*) malloc (sizeof(char)*strlen(tag));
+				strcpy(newTag, tag);
+				strcat(buf, " ");
+				strcat(buf, newTag);
+				rest = strtok(NULL, "\0");
+			}
+			int i, len = strlen(rest);
+			prga(state, stream, len);
+			char encrypted[len];
+			for(i = 0; i < len; i++)
+				encrypted[i] = rest[i] ^ stream[i];
+			char message[BUFSIZE];
+			Itoa(len, message, 10);
+			strcat(message, "/");
+			strcat(message, encrypted);
+			// form the buf
+			strcat(buf, " ");
+			strcat(buf, message);
+		}
 		 //Process before sending
 		 int lastIndex = strlen(buf)-1;
 		 buf[lastIndex] = '\r';
 		 buf[lastIndex+1] = '\n';
 		 buf[lastIndex+2] = '\0';
+
+		//  unsigned char state[256],key[]={"Key"};
+		//  ksa(state, key, 3);
+
 		// Send to the server
-		printf("--%s--\n", buf);
 		if ( write( csock, buf, strlen(buf) ) < 0 )
 		{
 			fprintf( stderr, "client write: %s\n", strerror(errno) );

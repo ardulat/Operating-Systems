@@ -286,8 +286,6 @@ main( int argc, char *argv[] )
 					}
 					else if (strcmp(cmd, "MSG") == 0) {
 						response = strtok(NULL, "\r\n");
-
-						fflush(stdout);
 						if (response[0] == '#') {
 							tag = strtok(response, " ");
 							char *newTag = (char*) malloc (sizeof(char)*strlen(tag));
