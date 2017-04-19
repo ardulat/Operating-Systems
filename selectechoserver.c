@@ -307,7 +307,44 @@ main( int argc, char *argv[] )
 								}
 								temp = temp->next;
 							}
-						} else {
+						}
+						else {
+							response = strcat(response, "\n");
+							// find all registered users
+							struct Client* temp = users;
+							int i;
+							for(i = 0; i < usersCount; i++) {
+								if(temp->all == true) {
+									write(temp->fd, response, strlen(response));
+								}
+								temp = temp->next;
+							}
+						}
+					}
+					else if (strcmp(cmd, "MSGE") == 0) {
+						response = strtok(NULL, "\r\n");
+						if (response[0] == '#') {
+							tag = strtok(response, " ");
+							char *newTag = (char*) malloc (sizeof(char)*strlen(tag));
+							strcpy(newTag, tag);
+							response = strtok(NULL, "\0");
+							printf("message is: %s\n", response);
+							// find all registered users
+							struct Client* temp = users;
+							int i;
+							for(i = 0; i < usersCount; i++) {
+								struct Tag* tag = temp->tag;
+								while(tag != NULL) {
+									if(strcmp(tag->tagName,newTag) == 0) {
+										printf("FINAL RESPONSE %s\n", response);
+										write(temp->fd, response, strlen(response));
+									}
+									tag = tag->next;
+								}
+								temp = temp->next;
+							}
+						}
+						else {
 							response = strcat(response, "\n");
 							// find all registered users
 							struct Client* temp = users;

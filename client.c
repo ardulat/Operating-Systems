@@ -66,8 +66,13 @@ void *writeThread ( void *arg ) {
 			exit(-1);
 		}
 
-		unsigned char *cmd, *rest, stream[1024];
-		cmd = strtok(buf, " ");
+		unsigned char *cmd, *temp, *rest, stream[1024];
+		int i;
+		// strcpy(temp, buf);                  -- DOES NOT WORK
+		temp = (unsigned char*) malloc (sizeof(unsigned char) * strlen(buf));
+		for (i = 0; i < strlen(buf); i++)
+			temp[i] = buf[i];
+		cmd = strtok(temp, " ");
 		if ( strcmp(cmd, "MSGE" ) == 0) {
 			unsigned char state[256], key[]={"Key"};
 			ksa(state, key, 3);
@@ -79,11 +84,11 @@ void *writeThread ( void *arg ) {
 				tag = strtok(rest, " ");
 				char *newTag = (char*) malloc (sizeof(char)*strlen(tag));
 				strcpy(newTag, tag);
-				strcat(buf, " ");
-				strcat(buf, newTag);
+				strcat(temp, " ");
+				strcat(temp, newTag);
 				rest = strtok(NULL, "\0");
 			}
-			int i, len = strlen(rest);
+			int len = strlen(rest);
 			prga(state, stream, len);
 			char encrypted[len];
 			for(i = 0; i < len; i++)
@@ -93,17 +98,19 @@ void *writeThread ( void *arg ) {
 			strcat(message, "/");
 			strcat(message, encrypted);
 			// form the buf
-			strcat(buf, " ");
-			strcat(buf, message);
-		}
-		 //Process before sending
-		 int lastIndex = strlen(buf)-1;
-		 buf[lastIndex] = '\r';
-		 buf[lastIndex+1] = '\n';
-		 buf[lastIndex+2] = '\0';
-
-		//  unsigned char state[256],key[]={"Key"};
-		//  ksa(state, key, 3);
+			strcat(temp, " ");
+			strcat(temp, message);
+			printf("message is %s\n", temp);
+			for(i = 0; i < strlen(temp); i++)
+				buf[i] = temp[i];
+			printf("\nbuf is %s\n\n", buf);
+		} else {
+			 //Process before sending
+			 int lastIndex = strlen(buf)-1;
+			 buf[lastIndex] = '\r';
+			 buf[lastIndex+1] = '\n';
+			 buf[lastIndex+2] = '\0';
+	 }
 
 		// Send to the server
 		if ( write( csock, buf, strlen(buf) ) < 0 )
