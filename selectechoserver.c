@@ -259,6 +259,10 @@ main( int argc, char *argv[] )
 				{
 					buf[cc] = '\0';
 					printf( "The User%d says: %s\n", fd, buf );
+					char *original;
+					strcpy(original, buf);
+					strcat(original, "\n");
+					printf("original msg: --%s--\n", original);
 
 					char *response, *tag;
 					char *cmd = strtok(buf, " ");
@@ -322,14 +326,15 @@ main( int argc, char *argv[] )
 						}
 					}
 					else if (strcmp(cmd, "MSGE") == 0) {
+
 						response = strtok(NULL, "\r\n");
 						if (response[0] == '#') {
 							tag = strtok(response, " ");
 							char *newTag = (char*) malloc (sizeof(char)*strlen(tag));
 							strcpy(newTag, tag);
-							response = strtok(NULL, "\0");
-							strcat(response, "\n");
-							printf("message is: %s\n", response);
+							// response = strtok(NULL, "\0");
+							// strcat(response, "\n");
+							// printf("message is: %s\n", response);
 							// find all registered users
 							struct Client* temp = users;
 							int i;
@@ -337,8 +342,8 @@ main( int argc, char *argv[] )
 								struct Tag* tag = temp->tag;
 								while(tag != NULL) {
 									if(strcmp(tag->tagName,newTag) == 0) {
-										printf("FINAL RESPONSE %s\n", response);
-										write(temp->fd, response, strlen(response));
+										printf("FINAL RESPONSE %s\n", original);
+										write(temp->fd, original, strlen(original));
 									}
 									tag = tag->next;
 								}

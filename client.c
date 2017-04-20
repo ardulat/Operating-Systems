@@ -16,6 +16,8 @@ void ksa(unsigned char state[], unsigned char key[], int len);
 
 /*
 **	Client
+** YOU MAY WANT TO VISIT MY REPO FOR THIS PROJECT (GITHUB):
+** https://github.com/ardulat/Operating-Systems
 */
 
 // Global variables to use further
@@ -147,35 +149,49 @@ void *readThread ( void *arg ) {
 		else {
 			// Everything is OK (User is still online)
 
-			/* MARK: --ONLY IF "MSGE" was sent
-			unsigned char *cmd, *temp, *rest, length[BUFSIZE], stream[1024];
-			int i, j, len;
-			temp = (unsigned char*) malloc (sizeof(unsigned char) * strlen(ans));
-			for (i = 0; i < strlen(ans); i++)
-				temp[i] = ans[i];
-			i = 0;
-			while (temp[i] != '/') {
-				length[i] = temp[i];
-				i++;
-			}
-			len = atoi(length);
-			rest = (unsigned char*) malloc (sizeof(unsigned char) * len);
-			i++;
-			for (j = 0; j < len; j++, i++) {
-				rest[j] = temp[i];
-			}
-			unsigned char state[256], key[]={"Key"};
-			ksa(state, key, 3);
-			prga(state, stream, len);
-			char *decrypted;
-			decrypted = (char *) malloc (sizeof(char) * len);
-			for(i = 0; i < len; i++)
-				decrypted[i] = rest[i] ^ stream[i];
-			printf("%s\n", decrypted);
-			*/
+      ans[cc] = '\0';
+      char *cmd, *original;
+      original = (char *) malloc (sizeof(char) * strlen(ans));
+      int i;
+      for(i = 0; i < strlen(ans); i++)
+        original[i] = ans[i];
+      cmd = strtok(ans, " ");
+      if (strcmp(cmd, "MSGE") == 0) {
+        char *msg = strtok(NULL, "\0");
+        if (msg[0] == '#') {
+          char *tag = strtok(msg, " ");
+          msg = strtok(NULL, "\0");
+        }
+        unsigned char *temp, *rest, length[BUFSIZE], stream[1024];
+  			int i, j, len;
+  			temp = (unsigned char*) malloc (sizeof(unsigned char) * strlen(msg));
+  			for (i = 0; i < strlen(msg); i++)
+  				temp[i] = msg[i];
+  			i = 0;
+  			while (temp[i] != '/') {
+  				length[i] = temp[i];
+  				i++;
+  			}
+  			len = atoi(length);
+  			rest = (unsigned char*) malloc (sizeof(unsigned char) * len);
+  			i++;
+  			for (j = 0; j < len; j++, i++)
+  				rest[j] = temp[i];
+  			unsigned char state[256], key[]={"Key"};
+  			ksa(state, key, 3);
+  			prga(state, stream, len);
+  			char *decrypted;
+  			decrypted = (char *) malloc (sizeof(char) * len);
+  			for(i = 0; i < len; i++)
+  				decrypted[i] = rest[i] ^ stream[i];
+  			printf("%s\n", decrypted);
+      }
+      else {
+        printf("%s", original);
+      }
 
-			ans[cc] = '\0';
-			printf("%s", ans);
+
+
 		}
 	}
 
