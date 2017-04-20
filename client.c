@@ -76,8 +76,12 @@ void *writeThread ( void *arg ) {
 			temp[i] = buf[i];
 		cmd = strtok(temp, " ");
 		if ( strcmp(cmd, "MSGE" ) == 0) {
-			unsigned char state[256], key[]={"Key"};
-			ksa(state, key, 3);
+      printf("Password for encryption: ");
+      char key[BUFSIZE];
+      fgets(key, BUFSIZE, stdin);
+      key[strlen(key)-1] = '\0';
+			unsigned char state[256];
+			ksa(state, key, strlen(key));
 			rest = strtok(NULL, "\n");
 			char *tag;
 			// tag or not
@@ -91,16 +95,11 @@ void *writeThread ( void *arg ) {
 				rest = strtok(NULL, "\0");
 			}
 			int len = strlen(rest);
-			// printf("rest_length: %d\n", len);
 			prga(state, stream, len);
-			// char encrypted[len];             -- GIVES LENGTH 6
 			char *encrypted;
 			encrypted = (char *) malloc (sizeof(char) * len);
-			// printf("encrypted_length: %d\n", strlen(encrypted));
-			// printf("rest: --%s--\n", rest);
 			for(i = 0; i < len; i++)
 				encrypted[i] = rest[i] ^ stream[i];
-			// printf("encrypted: --%s--\nlength: %d\n", encrypted, strlen(encrypted));
 			char message[BUFSIZE];
 			Itoa(len, message, 10);
 			strcat(message, "/");
@@ -131,6 +130,7 @@ void *writeThread ( void *arg ) {
 }
 
 void *readThread ( void *arg ) {
+  pthread_mutex_lock( &mutex );
 	// 	Start the loop for reading from the server
 	for(;;)
 	{
@@ -177,7 +177,12 @@ void *readThread ( void *arg ) {
   			i++;
   			for (j = 0; j < len; j++, i++)
   				rest[j] = temp[i];
-  			unsigned char state[256], key[]={"Key"};
+        printf("Please enter the password to read the msg: ");
+        char key[BUFSIZE];
+        fgets(key, BUFSIZE, stdin);
+        key[strlen(key)-1] = '\0';
+        printf("Key is --%s-- with length %d\n", key, strlen(key));
+  			unsigned char state[256];//, key[] = {"Key"};
   			ksa(state, key, 3);
   			prga(state, stream, len);
   			char *decrypted;
@@ -189,12 +194,9 @@ void *readThread ( void *arg ) {
       else {
         printf("%s", original);
       }
-
-
-
 		}
 	}
-
+  pthread_mutex_unlock( &mutex );
 	pthread_exit( NULL );
 }
 
