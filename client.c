@@ -12,8 +12,6 @@
 
 int connectsock( char *host, char *service, char *protocol );
 
-void ksa(unsigned char state[], unsigned char key[], int len);
-
 /*
 **	Client
 ** YOU MAY WANT TO VISIT MY REPO FOR THIS PROJECT (GITHUB):
@@ -30,6 +28,7 @@ int		csock;
 int status;
 pthread_t threads[2]; // 1 for writing, 1 for reading
 pthread_mutex_t	 mutex; // purpose: sometimes does not work without it
+char key[BUFSIZE];
 
 /* The Itoa code is in the public domain */
 char* Itoa(int value, char* str, int radix) {
@@ -76,10 +75,6 @@ void *writeThread ( void *arg ) {
 			temp[i] = buf[i];
 		cmd = strtok(temp, " ");
 		if ( strcmp(cmd, "MSGE" ) == 0) {
-      printf("Password for encryption: ");
-      char key[BUFSIZE];
-      fgets(key, BUFSIZE, stdin);
-      key[strlen(key)-1] = '\0';
 			unsigned char state[256];
 			ksa(state, key, strlen(key));
 			rest = strtok(NULL, "\n");
@@ -93,22 +88,36 @@ void *writeThread ( void *arg ) {
 				strcat(temp, " ");
 				strcat(temp, newTag);
 				rest = strtok(NULL, "\0");
+        free(newTag);
 			}
+      rest[strlen(rest)] = '\0';
 			int len = strlen(rest);
+      // printf("vse delo v etom: len = %d\n", len);
 			prga(state, stream, len);
 			char *encrypted;
 			encrypted = (char *) malloc (sizeof(char) * len);
-			for(i = 0; i < len; i++)
+      printf("rest: --%s-- with length: %d\n", rest, (int)strlen(rest));
+      printf("stream: --%s-- with length: %d\n", stream, (int)strlen(stream));
+			for(i = 0; i < len; i++) {
 				encrypted[i] = rest[i] ^ stream[i];
+        // printf("result is: --%s--\n", encrypted);
+        // printf("rest[i] = --%c--\n", rest[i]);
+      }
+      stream[0] = '\0';
+      printf("encrypted: --%s-- with length: %d\n", encrypted, (int)strlen(encrypted));
 			char message[BUFSIZE];
 			Itoa(len, message, 10);
 			strcat(message, "/");
 			strcat(message, encrypted);
+      // printf("message: --%s--\n", message);
 			// form the buf
 			strcat(temp, " ");
 			strcat(temp, message);
+      // printf("temp: --%s--\n", temp);
 			for(i = 0; i < strlen(temp); i++)
 				buf[i] = temp[i];
+      buf[strlen(buf)-1] = '\0';
+      free(encrypted);
 		} else {
 			 //Process before sending
 			 int lastIndex = strlen(buf)-1;
@@ -116,6 +125,7 @@ void *writeThread ( void *arg ) {
 			 buf[lastIndex+1] = '\n';
 			 buf[lastIndex+2] = '\0';
 	 }
+   free(temp);
 
 		// Send to the server
 		if ( write( csock, buf, strlen(buf) ) < 0 )
@@ -177,13 +187,8 @@ void *readThread ( void *arg ) {
   			i++;
   			for (j = 0; j < len; j++, i++)
   				rest[j] = temp[i];
-        printf("Please enter the password to read the msg: ");
-        char key[BUFSIZE];
-        fgets(key, BUFSIZE, stdin);
-        key[strlen(key)-1] = '\0';
-        printf("Key is --%s-- with length %d\n", key, strlen(key));
-  			unsigned char state[256];//, key[] = {"Key"};
-  			ksa(state, key, 3);
+  			unsigned char state[256];
+  			ksa(state, key, strlen(key));
   			prga(state, stream, len);
   			char *decrypted;
   			decrypted = (char *) malloc (sizeof(char) * len);
@@ -226,7 +231,10 @@ main( int argc, char *argv[] )
 	}
 
 	printf( "The server is ready, please start sending to the server.\n" );
-	printf( "Type q or Q to quit.\n" );
+  printf( "Please enter a password for encrypted messages: " );
+  fgets( key, BUFSIZE, stdin );
+  key[strlen(key)-1] = '\0';
+  printf( "Type q or Q to quit.\n" );
 	fflush( stdout );
 
 	pthread_mutex_init( &mutex, NULL );

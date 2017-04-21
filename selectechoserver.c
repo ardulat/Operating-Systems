@@ -262,7 +262,6 @@ main( int argc, char *argv[] )
 					char *original;
 					strcpy(original, buf);
 					strcat(original, "\n");
-					printf("original msg: --%s--\n", original);
 
 					char *response, *tag;
 					char *cmd = strtok(buf, " ");
@@ -296,7 +295,6 @@ main( int argc, char *argv[] )
 							strcpy(newTag, tag);
 							response = strtok(NULL, "\r\n");
 							response = strcat(response, "\n");
-							printf("message is: %s\n", response);
 							// find all registered users
 							struct Client* temp = users;
 							int i;
@@ -304,7 +302,6 @@ main( int argc, char *argv[] )
 								struct Tag* tag = temp->tag;
 								while(tag != NULL) {
 									if(strcmp(tag->tagName,newTag) == 0) {
-										printf("FINAL RESPONSE %s\n", response);
 										write(temp->fd, response, strlen(response));
 									}
 									tag = tag->next;
@@ -327,14 +324,11 @@ main( int argc, char *argv[] )
 					}
 					else if (strcmp(cmd, "MSGE") == 0) {
 
-						response = strtok(NULL, "\r\n");
+						response = strtok(NULL, "\0");
 						if (response[0] == '#') {
 							tag = strtok(response, " ");
 							char *newTag = (char*) malloc (sizeof(char)*strlen(tag));
 							strcpy(newTag, tag);
-							// response = strtok(NULL, "\0");
-							// strcat(response, "\n");
-							// printf("message is: %s\n", response);
 							// find all registered users
 							struct Client* temp = users;
 							int i;
@@ -342,7 +336,6 @@ main( int argc, char *argv[] )
 								struct Tag* tag = temp->tag;
 								while(tag != NULL) {
 									if(strcmp(tag->tagName,newTag) == 0) {
-										printf("FINAL RESPONSE %s\n", original);
 										write(temp->fd, original, strlen(original));
 									}
 									tag = tag->next;
@@ -351,13 +344,12 @@ main( int argc, char *argv[] )
 							}
 						}
 						else {
-							response = strcat(response, "\n");
 							// find all registered users
 							struct Client* temp = users;
 							int i;
 							for(i = 0; i < usersCount; i++) {
 								if(temp->all == true) {
-									write(temp->fd, response, strlen(response));
+									write(temp->fd, original, strlen(original));
 								}
 								temp = temp->next;
 							}
