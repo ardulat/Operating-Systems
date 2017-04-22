@@ -37,6 +37,7 @@ struct Tag {
 
 struct Client* users;
 int usersCount;
+int nfds;
 
 void printUsers() {
 	struct Client* temp = users;
@@ -159,7 +160,6 @@ main( int argc, char *argv[] )
 	fd_set			afds;
 	int			alen;
 	int			fd;
-	int			nfds;
 	int			rport = 0;
 	int			cc;
 

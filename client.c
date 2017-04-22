@@ -11,6 +11,8 @@
 #define BUFSIZE		4096
 
 int connectsock( char *host, char *service, char *protocol );
+void ksa(unsigned char state[], unsigned char key[], int len);
+void prga(unsigned char state[], unsigned char out[], int len);
 
 /*
 **	Client
@@ -56,6 +58,29 @@ char* Itoa(int value, char* str, int radix) {
     return str;
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 void *writeThread ( void *arg ) {
 	// 	Start the loop for writing to the server
 	while ( fgets( buf, BUFSIZE, stdin ) != NULL )
@@ -66,8 +91,9 @@ void *writeThread ( void *arg ) {
 			close(csock);
 			exit(-1);
 		}
-
-		unsigned char *cmd, *temp, *rest, stream[1024];
+    buf[strlen(buf)] = '\0';
+		unsigned char *cmd, *temp, *rest, *stream;
+    stream = (unsigned char*) malloc(sizeof(unsigned char) * 1024);
 		int i;
 		// strcpy(temp, buf);                  -- DOES NOT WORK
 		temp = (unsigned char*) malloc (sizeof(unsigned char) * strlen(buf));
@@ -75,6 +101,7 @@ void *writeThread ( void *arg ) {
 			temp[i] = buf[i];
 		cmd = strtok(temp, " ");
 		if ( strcmp(cmd, "MSGE" ) == 0) {
+      printf("KEY %s\n",key);
       /* try sending messages in this order:
       ** hello
       ** h
@@ -82,8 +109,9 @@ void *writeThread ( void *arg ) {
       ** how ya doin
       */
 			unsigned char state[256];
-			ksa(state, key, strlen(key));
+
 			rest = strtok(NULL, "\n");
+      printf("rest: --%s--\n", rest);
 			char *tag;
 			// tag or not
 			if ( rest[0] == '#' ) {
@@ -97,33 +125,70 @@ void *writeThread ( void *arg ) {
         free(newTag);
 			}
       rest[strlen(rest)] = '\0';
-			int len = strlen(rest);
-      // printf("vse delo v etom: len = %d\n", len);
+			// int len = strlen(rest);
+      int j = 0;
+      while (rest[j] != '\0') {
+        printf("%c\n", rest[j]);
+        j++;
+      }
+      int len = j;
+      printf("vse delo v etom: len = %d\n", len);
+      ksa(state, key, strlen(key));
 			prga(state, stream, len);
 			char *encrypted;
+      stream[len]='\0';
 			encrypted = (char *) malloc (sizeof(char) * len);
       printf("rest: --%s-- with length: %d\n", rest, (int)strlen(rest));
       printf("stream: --%s-- with length: %d\n", stream, (int)strlen(stream));
 			for(i = 0; i < len; i++) {
 				encrypted[i] = rest[i] ^ stream[i];
-        // printf("result is: --%s--\n", encrypted);
+        //printf("result is: --%s--\n", encrypted);
+      //  printf("counter %d\n",i );
+        // printf("encrypted[i] = %c\n", encrypted[i]);
+        // printf("%c XOR %c\n",rest[i],stream[i]);
         // printf("rest[i] = --%c--\n", rest[i]);
       }
-      stream[0] = '\0';
-      printf("encrypted: --%s-- with length: %d\n", encrypted, (int)strlen(encrypted));
-			char message[BUFSIZE];
-			Itoa(len, message, 10);
-			strcat(message, "/");
-			strcat(message, encrypted);
+      encrypted[i]='\0';
+      printf("encrypted: ");
+      for(i = 0; i < len; i++) {
+        printf("%c", encrypted[i]);
+      }
+      printf("\n");
+  //    printf("encrypted: --%s-- with length: %d\n", encrypted, (int)strlen(encrypted));
+			//char message[BUFSIZE];
+      // sprintf(message,"%d/%s\0",len,encrypted);
+			// Itoa(len, message, 10);
+			// strcat(message, "/");
+      // message[strlen(message)] = '\0';
+			// // strcat(message, encrypted);
+      // for(i = 0, j = strlen(message); i < len; i++, j++) {
+      //     message[j]=encrypted[i];
+      // }
+      //
       // printf("message: --%s--\n", message);
-			// form the buf
-			strcat(temp, " ");
-			strcat(temp, message);
-      // printf("temp: --%s--\n", temp);
-			for(i = 0; i < strlen(temp); i++)
-				buf[i] = temp[i];
-      buf[strlen(buf)-1] = '\0';
-      free(encrypted);
+			// // form the buf
+			// strcat(temp, " ");
+			// strcat(temp, message);
+      // // printf("temp: --%s--\n", temp);
+      // printf("temp = ");
+			// for(i = 0; i < strlen(temp); i++) {
+			// 	buf[i] = temp[i];
+      //   printf("%c", temp[i]);
+      // }
+      // printf("\n");
+      // buf[strlen(buf)-1] = '\0';
+      // free(encrypted);
+      sprintf(buf,"MSGE %d/",len);
+      int tempInt=strlen(buf);
+      for(i=0;i<len;i++){
+        buf[tempInt+i]=encrypted[i];
+      }
+      buf[tempInt+len]='\0';
+      // printf("buf: ");
+      // for(i=0; i < tempInt+len; i++) {
+      //   printf("%c", buf[i]);
+      // }
+      // printf("\n");
 		} else {
 			 //Process before sending
 			 int lastIndex = strlen(buf)-1;
@@ -131,7 +196,7 @@ void *writeThread ( void *arg ) {
 			 buf[lastIndex+1] = '\n';
 			 buf[lastIndex+2] = '\0';
 	 }
-   free(temp);
+
 
 		// Send to the server
 		if ( write( csock, buf, strlen(buf) ) < 0 )
@@ -139,14 +204,40 @@ void *writeThread ( void *arg ) {
 			fprintf( stderr, "client write: %s\n", strerror(errno) );
 			exit( -1 );
 		}
-		buf[0] = '\0';
+    free(stream);
+    free(temp);
 	}
+
 
 	pthread_exit( NULL );
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// The code with bug in encryption
+
 void *readThread ( void *arg ) {
-  pthread_mutex_lock( &mutex );
 	// 	Start the loop for reading from the server
 	for(;;)
 	{
@@ -163,9 +254,16 @@ void *readThread ( void *arg ) {
 			exit(-1);
 		}
 		else {
+      ans[cc] = '\0';
+      int j;
+      printf("ans is ");
+      for(j = 0; j < strlen(ans); j++) {
+        printf("%c", ans[j]);
+      }
+      printf("\n");
 			// Everything is OK (User is still online)
 
-      ans[cc] = '\0';
+
       char *cmd, *original;
       original = (char *) malloc (sizeof(char) * strlen(ans));
       int i;
@@ -185,10 +283,14 @@ void *readThread ( void *arg ) {
   				temp[i] = msg[i];
   			i = 0;
   			while (temp[i] != '/') {
+
   				length[i] = temp[i];
+          // printf("lenght[%d] = %c\n",i,lenght[i]);
   				i++;
   			}
+        length[i] = '\0';
   			len = atoi(length);
+        printf("len %d\n",len);
   			rest = (unsigned char*) malloc (sizeof(unsigned char) * len);
   			i++;
   			for (j = 0; j < len; j++, i++)
@@ -198,8 +300,12 @@ void *readThread ( void *arg ) {
   			prga(state, stream, len);
   			char *decrypted;
   			decrypted = (char *) malloc (sizeof(char) * len);
-  			for(i = 0; i < len; i++)
+  			for(i = 0; i < len; i++){
   				decrypted[i] = rest[i] ^ stream[i];
+          printf("new iter %d\n",i);
+        }
+          decrypted[len]='\0';
+
   			printf("%s\n", decrypted);
       }
       else {
@@ -207,7 +313,6 @@ void *readThread ( void *arg ) {
       }
 		}
 	}
-  pthread_mutex_unlock( &mutex );
 	pthread_exit( NULL );
 }
 
@@ -242,8 +347,6 @@ main( int argc, char *argv[] )
   key[strlen(key)-1] = '\0';
   printf( "Type q or Q to quit.\n" );
 	fflush( stdout );
-
-	pthread_mutex_init( &mutex, NULL );
 
 	// create thread for writing
 	status = pthread_create( &threads[0], NULL, writeThread, NULL );
