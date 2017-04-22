@@ -75,6 +75,12 @@ void *writeThread ( void *arg ) {
 			temp[i] = buf[i];
 		cmd = strtok(temp, " ");
 		if ( strcmp(cmd, "MSGE" ) == 0) {
+      /* try sending messages in this order:
+      ** hello
+      ** h
+      ** yo
+      ** how ya doin
+      */
 			unsigned char state[256];
 			ksa(state, key, strlen(key));
 			rest = strtok(NULL, "\n");
@@ -231,7 +237,7 @@ main( int argc, char *argv[] )
 	}
 
 	printf( "The server is ready, please start sending to the server.\n" );
-  printf( "Please enter a password for encrypted messages: " );
+  printf( "Please enter the password for encrypted messages: " );
   fgets( key, BUFSIZE, stdin );
   key[strlen(key)-1] = '\0';
   printf( "Type q or Q to quit.\n" );
