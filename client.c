@@ -58,29 +58,6 @@ char* Itoa(int value, char* str, int radix) {
     return str;
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 void *writeThread ( void *arg ) {
 	// 	Start the loop for writing to the server
 	while ( fgets( buf, BUFSIZE, stdin ) != NULL )
@@ -95,19 +72,12 @@ void *writeThread ( void *arg ) {
 		unsigned char *cmd, *temp, *rest, *stream;
     stream = (unsigned char*) malloc(sizeof(unsigned char) * 1024);
 		int i;
-		// strcpy(temp, buf);                  -- DOES NOT WORK
 		temp = (unsigned char*) malloc (sizeof(unsigned char) * strlen(buf));
 		for (i = 0; i < strlen(buf); i++)
 			temp[i] = buf[i];
 		cmd = strtok(temp, " ");
 		if ( strcmp(cmd, "MSGE" ) == 0) {
       printf("KEY %s\n",key);
-      /* try sending messages in this order:
-      ** hello
-      ** h
-      ** yo
-      ** how ya doin
-      */
 			unsigned char state[256];
 
 			rest = strtok(NULL, "\n");
@@ -125,7 +95,6 @@ void *writeThread ( void *arg ) {
         free(newTag);
 			}
       rest[strlen(rest)] = '\0';
-			// int len = strlen(rest);
       int j = 0;
       while (rest[j] != '\0') {
         printf("%c\n", rest[j]);
@@ -140,55 +109,20 @@ void *writeThread ( void *arg ) {
 			encrypted = (char *) malloc (sizeof(char) * len);
       printf("rest: --%s-- with length: %d\n", rest, (int)strlen(rest));
       printf("stream: --%s-- with length: %d\n", stream, (int)strlen(stream));
-			for(i = 0; i < len; i++) {
+			for(i = 0; i < len; i++)
 				encrypted[i] = rest[i] ^ stream[i];
-        //printf("result is: --%s--\n", encrypted);
-      //  printf("counter %d\n",i );
-        // printf("encrypted[i] = %c\n", encrypted[i]);
-        // printf("%c XOR %c\n",rest[i],stream[i]);
-        // printf("rest[i] = --%c--\n", rest[i]);
-      }
       encrypted[i]='\0';
       printf("encrypted: ");
       for(i = 0; i < len; i++) {
         printf("%c", encrypted[i]);
       }
       printf("\n");
-  //    printf("encrypted: --%s-- with length: %d\n", encrypted, (int)strlen(encrypted));
-			//char message[BUFSIZE];
-      // sprintf(message,"%d/%s\0",len,encrypted);
-			// Itoa(len, message, 10);
-			// strcat(message, "/");
-      // message[strlen(message)] = '\0';
-			// // strcat(message, encrypted);
-      // for(i = 0, j = strlen(message); i < len; i++, j++) {
-      //     message[j]=encrypted[i];
-      // }
-      //
-      // printf("message: --%s--\n", message);
-			// // form the buf
-			// strcat(temp, " ");
-			// strcat(temp, message);
-      // // printf("temp: --%s--\n", temp);
-      // printf("temp = ");
-			// for(i = 0; i < strlen(temp); i++) {
-			// 	buf[i] = temp[i];
-      //   printf("%c", temp[i]);
-      // }
-      // printf("\n");
-      // buf[strlen(buf)-1] = '\0';
-      // free(encrypted);
       sprintf(buf,"MSGE %d/",len);
       int tempInt=strlen(buf);
       for(i=0;i<len;i++){
         buf[tempInt+i]=encrypted[i];
       }
       buf[tempInt+len]='\0';
-      // printf("buf: ");
-      // for(i=0; i < tempInt+len; i++) {
-      //   printf("%c", buf[i]);
-      // }
-      // printf("\n");
 		} else {
 			 //Process before sending
 			 int lastIndex = strlen(buf)-1;
@@ -196,7 +130,6 @@ void *writeThread ( void *arg ) {
 			 buf[lastIndex+1] = '\n';
 			 buf[lastIndex+2] = '\0';
 	 }
-
 
 		// Send to the server
 		if ( write( csock, buf, strlen(buf) ) < 0 )
@@ -208,34 +141,8 @@ void *writeThread ( void *arg ) {
     free(temp);
 	}
 
-
 	pthread_exit( NULL );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// The code with bug in encryption
 
 void *readThread ( void *arg ) {
 	// 	Start the loop for reading from the server
@@ -263,7 +170,6 @@ void *readThread ( void *arg ) {
       printf("\n");
 			// Everything is OK (User is still online)
 
-
       char *cmd, *original;
       original = (char *) malloc (sizeof(char) * strlen(ans));
       int i;
@@ -284,9 +190,7 @@ void *readThread ( void *arg ) {
   			i = 0;
   			while (temp[i] != '/') {
 
-  				length[i] = temp[i];
-          // printf("lenght[%d] = %c\n",i,lenght[i]);
-  				i++;
+  				length[i] = temp[i];  				i++;
   			}
         length[i] = '\0';
   			len = atoi(length);
