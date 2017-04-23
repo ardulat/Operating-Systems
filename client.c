@@ -77,11 +77,8 @@ void *writeThread ( void *arg ) {
 			temp[i] = buf[i];
 		cmd = strtok(temp, " ");
 		if ( strcmp(cmd, "MSGE" ) == 0) {
-      printf("KEY %s\n",key);
 			unsigned char state[256];
-
 			rest = strtok(NULL, "\n");
-      printf("rest: --%s--\n", rest);
 			char *tag;
 			// tag or not
 			if ( rest[0] == '#' ) {
@@ -101,22 +98,14 @@ void *writeThread ( void *arg ) {
         j++;
       }
       int len = j;
-      printf("vse delo v etom: len = %d\n", len);
       ksa(state, key, strlen(key));
 			prga(state, stream, len);
 			char *encrypted;
       stream[len]='\0';
 			encrypted = (char *) malloc (sizeof(char) * len);
-      printf("rest: --%s-- with length: %d\n", rest, (int)strlen(rest));
-      printf("stream: --%s-- with length: %d\n", stream, (int)strlen(stream));
 			for(i = 0; i < len; i++)
 				encrypted[i] = rest[i] ^ stream[i];
       encrypted[i]='\0';
-      printf("encrypted: ");
-      for(i = 0; i < len; i++) {
-        printf("%c", encrypted[i]);
-      }
-      printf("\n");
       sprintf(buf,"MSGE %d/",len);
       int tempInt=strlen(buf);
       for(i=0;i<len;i++){
