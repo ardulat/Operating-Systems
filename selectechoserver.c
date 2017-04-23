@@ -265,6 +265,7 @@ main( int argc, char *argv[] )
 
 					char *response, *tag;
 					char *cmd = strtok(buf, " ");
+					printf("buf: %s\n", buf);
 
 					/* Understand what that message means */
 					if (strcmp(cmd, "REGISTERALL\r\n") == 0) {

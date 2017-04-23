@@ -151,14 +151,7 @@ void *readThread ( void *arg ) {
 		}
 		else {
       ans[cc] = '\0';
-      int j;
-      printf("ans is ");
-      for(j = 0; j < strlen(ans); j++) {
-        printf("%c", ans[j]);
-      }
-      printf("\n");
 			// Everything is OK (User is still online)
-
       char *cmd, *original;
       original = (char *) malloc (sizeof(char) * strlen(ans));
       int i;
@@ -178,12 +171,11 @@ void *readThread ( void *arg ) {
   				temp[i] = msg[i];
   			i = 0;
   			while (temp[i] != '/') {
-
-  				length[i] = temp[i];  				i++;
+  				length[i] = temp[i];
+          i++;
   			}
         length[i] = '\0';
   			len = atoi(length);
-        printf("len %d\n",len);
   			rest = (unsigned char*) malloc (sizeof(unsigned char) * len);
   			i++;
   			for (j = 0; j < len; j++, i++)
@@ -193,13 +185,9 @@ void *readThread ( void *arg ) {
   			prga(state, stream, len);
   			char *decrypted;
   			decrypted = (char *) malloc (sizeof(char) * len);
-  			for(i = 0; i < len; i++){
+  			for(i = 0; i < len; i++)
   				decrypted[i] = rest[i] ^ stream[i];
-          printf("new iter %d\n",i);
-        }
-          decrypted[len]='\0';
-
-  			printf("%s\n", decrypted);
+        decrypted[len]='\0';
       }
       else {
         printf("%s", original);
@@ -212,7 +200,6 @@ void *readThread ( void *arg ) {
 int
 main( int argc, char *argv[] )
 {
-
 	switch( argc )
 	{
 		case    2:
