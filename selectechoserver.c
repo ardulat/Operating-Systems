@@ -361,10 +361,6 @@ main( int argc, char *argv[] )
 						char len[1024], newTag[1024];
 						while (original[i] != ' ')
 							i++;
-						int k;
-						for(k = 0; k < cc; k++)
-							printf("%c", original[k]);
-						printf("\n");
 						i++;
 						if (original[i] == '#') {
 							while (original[i] != ' ') {
@@ -374,69 +370,70 @@ main( int argc, char *argv[] )
 							}
 							i++;
 						}
+
 						j = 0;
 						while (original[i] != '/') {
 							len[j] = original[i];
 							i++;
 							j++;
 						}
+
 						len[j] = '\0';
 						header = i;
 						i++;
 						size = atol(len);
 						char *ibuffer = (char *) malloc (sizeof(char) * size);
 						j = 0;
-						while (i < size+header || i < BUFSIZE) {
-							ibuffer[j] = original[i];
-							i++;
-							j++;
-						}
+
 						while (j < size) {
-							char *temp = (char *) malloc (sizeof(char) * BUFSIZE);
-							// if ((cc = read(fd, temp, BUFSIZE)) <= 0) {
-							// 	// catching the exception
-							// 	printf("Error while reading.\n");
-							// }
+							char temp[BUFSIZE];
 							read(fd, temp, BUFSIZE);
-							// assume that everythin works fine for that
+							// assume that everything works fine for that
 							i = 0;
-							while (i != BUFSIZE || j < size) {
+							while (i < BUFSIZE) {
 								ibuffer[j] = temp[i];
 								i++;
 								j++;
 							}
-							// free(temp);
 						}
 
+						printf("Starting to send...\n");
 						// MARK: --Writing the image
-						i = 0, j = 0;
-						while (i < size) {
-							char *temp = (char *) malloc (sizeof(char) * BUFSIZE);
-							while (j < BUFSIZE || i < size) {
-								temp[j] = ibuffer[i];
-								i++;
-								j++;
-							}
-							if (newTag[0] == '#') {
-								struct Client *user = users;
-								while (user != NULL) {
-									struct Tag *Tag = user->tag;
-									while (Tag != NULL) {
-										if (strcmp(Tag->tagName, newTag) == 0)
-											write(user->fd, temp, BUFSIZE);
-										user = user->next;
+						int k;
+						char send[cc];
+						printf("HEADER: ");
+						for(k = 0; k < cc; k++) {
+							send[k] = original[k];
+							printf("%c", send[k]);
+						}
+						printf("\n");
+						write(fd, send, cc);
+						write(fd, ibuffer, size);
+						i = 0;
+						int iteration = 0;
+
+						if (newTag[0] == '#') {
+							struct Client *user = users;
+							while (user != NULL) {
+								struct Tag *Tag = user->tag;
+								while (Tag != NULL) {
+									if (strcmp(Tag->tagName, newTag) == 0) {
+										write(user->fd, send, cc);
+										write(user->fd, ibuffer, size);
 									}
-									user = user->next;
+									Tag = Tag->next;
 								}
-							} else {
-								struct Client *user = users;
-								while (user != NULL) {
-									if (user->all == true)
-										write(user->fd, temp, BUFSIZE);
-									user = user->next;
-								}
+								user = user->next;
 							}
-							// free(temp);
+						} else {
+							struct Client *user = users;
+							while (user != NULL) {
+								if (user->all == true) {
+									write(user->fd, send, cc);
+									write(user->fd, ibuffer, size);
+								}
+								user = user->next;
+							}
 						}
 						// free(ibuffer);
 					}
