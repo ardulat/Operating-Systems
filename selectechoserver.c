@@ -258,14 +258,13 @@ main( int argc, char *argv[] )
 				else
 				{
 					buf[cc] = '\0';
-					printf( "The User%d says: %s\n", fd, buf );
-					char *original;
+					// printf( "The User%d says: %s\n", fd, buf );
+					char *original = (char *) malloc (sizeof(char) * strlen(buf));
 					strcpy(original, buf);
 					strcat(original, "\n");
 
 					char *response, *tag;
 					char *cmd = strtok(buf, " ");
-					printf("buf: %s\n", buf);
 
 					/* Understand what that message means */
 					if (strcmp(cmd, "REGISTERALL\r\n") == 0) {
@@ -300,12 +299,12 @@ main( int argc, char *argv[] )
 							struct Client* temp = users;
 							int i;
 							for(i = 0; i < usersCount; i++) {
-								struct Tag* tag = temp->tag;
-								while(tag != NULL) {
-									if(strcmp(tag->tagName,newTag) == 0) {
+								struct Tag* Tag = temp->tag;
+								while(Tag != NULL) {
+									if(strcmp(Tag->tagName,newTag) == 0) {
 										write(temp->fd, response, strlen(response));
 									}
-									tag = tag->next;
+									Tag = Tag->next;
 								}
 								temp = temp->next;
 							}
@@ -324,7 +323,6 @@ main( int argc, char *argv[] )
 						}
 					}
 					else if (strcmp(cmd, "MSGE") == 0) {
-
 						response = strtok(NULL, "\0");
 						if (response[0] == '#') {
 							tag = strtok(response, " ");
@@ -334,12 +332,12 @@ main( int argc, char *argv[] )
 							struct Client* temp = users;
 							int i;
 							for(i = 0; i < usersCount; i++) {
-								struct Tag* tag = temp->tag;
-								while(tag != NULL) {
-									if(strcmp(tag->tagName,newTag) == 0) {
+								struct Tag* Tag = temp->tag;
+								while(Tag != NULL) {
+									if(strcmp(Tag->tagName,newTag) == 0) {
 										write(temp->fd, original, strlen(original));
 									}
-									tag = tag->next;
+									Tag = Tag->next;
 								}
 								temp = temp->next;
 							}
@@ -356,10 +354,97 @@ main( int argc, char *argv[] )
 							}
 						}
 					}
+					else if (strcmp(cmd, "IMAGE") == 0) {
+						// MARK: --Reading the image
+						int i = 0, j = 0, header;
+						long size;
+						char len[1024], newTag[1024];
+						while (original[i] != ' ')
+							i++;
+						int k;
+						for(k = 0; k < cc; k++)
+							printf("%c", original[k]);
+						printf("\n");
+						i++;
+						if (original[i] == '#') {
+							while (original[i] != ' ') {
+								newTag[j] = original[i];
+								i++;
+								j++;
+							}
+							i++;
+						}
+						j = 0;
+						while (original[i] != '/') {
+							len[j] = original[i];
+							i++;
+							j++;
+						}
+						len[j] = '\0';
+						header = i;
+						i++;
+						size = atol(len);
+						char *ibuffer = (char *) malloc (sizeof(char) * size);
+						j = 0;
+						while (i < size+header || i < BUFSIZE) {
+							ibuffer[j] = original[i];
+							i++;
+							j++;
+						}
+						while (j < size) {
+							char *temp = (char *) malloc (sizeof(char) * BUFSIZE);
+							// if ((cc = read(fd, temp, BUFSIZE)) <= 0) {
+							// 	// catching the exception
+							// 	printf("Error while reading.\n");
+							// }
+							read(fd, temp, BUFSIZE);
+							// assume that everythin works fine for that
+							i = 0;
+							while (i != BUFSIZE || j < size) {
+								ibuffer[j] = temp[i];
+								i++;
+								j++;
+							}
+							// free(temp);
+						}
+
+						// MARK: --Writing the image
+						i = 0, j = 0;
+						while (i < size) {
+							char *temp = (char *) malloc (sizeof(char) * BUFSIZE);
+							while (j < BUFSIZE || i < size) {
+								temp[j] = ibuffer[i];
+								i++;
+								j++;
+							}
+							if (newTag[0] == '#') {
+								struct Client *user = users;
+								while (user != NULL) {
+									struct Tag *Tag = user->tag;
+									while (Tag != NULL) {
+										if (strcmp(Tag->tagName, newTag) == 0)
+											write(user->fd, temp, BUFSIZE);
+										user = user->next;
+									}
+									user = user->next;
+								}
+							} else {
+								struct Client *user = users;
+								while (user != NULL) {
+									if (user->all == true)
+										write(user->fd, temp, BUFSIZE);
+									user = user->next;
+								}
+							}
+							// free(temp);
+						}
+						// free(ibuffer);
+					}
 					else {
 						response = "Oops! Sorry, I can't understand you.\n";
 						write(fd, response, strlen(response));
 					}
+					// free(original);
 				}
 			}
 		}
