@@ -43,6 +43,7 @@ struct Read {
 struct Client* users;
 int usersCount;
 int nfds;
+fd_set afds;
 
 void printUsers() {
 	struct Client* temp = users;
@@ -188,12 +189,13 @@ void printTags(int fd) {
 // 		}
 // 	}
 // }
-pthread_mutex_t mtx;
+pthread_mutex_t rmutex;
 
 void *readThread(void *ign) {
 	// pthread_mutex_lock(&mtx);
 	struct Read arg = *((struct Read *) ign);
 	int fd = arg.fd;
+	printf("fd = %d\n", fd);
 	char *original = arg.original;
 	printf("HEADER: %s\n", original);
 	// MARK: --Reading the image
@@ -225,22 +227,28 @@ void *readThread(void *ign) {
 	j = 0;
 	while (j < size) {
 		char temp[BUFSIZE];
-		read(fd, temp, BUFSIZE);
-		printf("\n-------------------------------------%s------------------------------------------\n\n", temp);
-		// assume that everything works fine for that
-		i = 0;
-		while (i < BUFSIZE) {
-			ibuffer[j] = temp[i];
-			i++;
-			j++;
-		}
+		int many = read(fd, temp, BUFSIZE);
+		// printf("read %d\n", many);
+		memcpy(ibuffer+many, temp, many);
+		j+= many;
 	}
-	printf("Starting to send...\n");
-
+	// printf("\n");
+	// j = 0;
+	// while (j < size) {
+	// 	printf("%c", ibuffer[j]);
+	// 	j++;
+	// }
+	printf("\nStarting to send...\n");
+	printf("Going to set %d\n", fd);
+	FD_SET(fd, &afds);
+	FD_ISSET(fd, &afds);
+	printf("Have set %d\n", fd);
 
 	// pthread_create(&writingTreads[fd], NULL, &writeThread, &warg);
 	// pthread_join
-	// pthread_mutex_unlock(&mtx);
+	// pthread_mutex_lock(&rmutex);
+
+	// pthread_mutex_unlock(&rmutex);
 	pthread_exit(NULL);
 }
 
@@ -253,7 +261,6 @@ main( int argc, char *argv[] )
 	int			msock;
 	int			ssock;
 	fd_set			rfds;
-	fd_set			afds;
 	int			alen;
 	int			fd;
 	int			rport = 0;
@@ -284,17 +291,20 @@ main( int argc, char *argv[] )
 
 	nfds = getdtablesize();
 	pthread_t readingThreads[nfds];
-	pthread_mutex_init(&mtx, NULL);
+	pthread_mutex_init(&rmutex, NULL);
 
 	FD_ZERO(&afds);
 	FD_SET( msock, &afds );
 
 	for (;;)
 	{
+		struct timeval time;
+		time.tv_sec = 1;
+
 		memcpy((char *)&rfds, (char *)&afds, sizeof(rfds));
 
 		if (select(nfds, &rfds, (fd_set *)0, (fd_set *)0,
-				(struct timeval *)0) < 0)
+				&time) < 0)
 		{
 			fprintf( stderr, "server select: %s\n", strerror(errno) );
 			exit(-1);
@@ -323,6 +333,7 @@ main( int argc, char *argv[] )
 		{
 			if (fd != msock && FD_ISSET(fd, &rfds))
 			{
+				printf("Ok, next!\n");
 				// add to users linked list
 				struct Client* temp = (struct Client*) malloc (sizeof(struct Client*));
 				bool userExists = false;
@@ -455,8 +466,13 @@ main( int argc, char *argv[] )
 						struct Read arg;
 						arg.fd = fd;
 						arg.original = original;
-						pthread_create(&readingThreads[fd], NULL, &readThread, &arg);
-						pthread_join(readingThreads[fd], NULL);
+						printf("%d is deleted, which is arg.fd = %d\n", fd, arg.fd);
+						FD_CLR(fd, &afds);
+						int st = pthread_create(&readingThreads[fd], NULL, &readThread, &arg);
+						if (st != 0) {
+							printf("Error creating a thread.\n");
+							FD_SET(fd, &afds);
+						}
 					}
 					else {
 						response = "Oops! Sorry, I can't understand you.\n";
