@@ -186,7 +186,6 @@ main( int argc, char *argv[] )
 		fflush( stdout );
 	}
 
-
 	nfds = getdtablesize();
 
 	FD_ZERO(&afds);
@@ -215,7 +214,6 @@ main( int argc, char *argv[] )
 				fprintf( stderr, "accept: %s\n", strerror(errno) );
 				exit(-1);
 			}
-			// ssock--;
 			/* start listening to this guy */
 			FD_SET( ssock, &afds );
 			printf("Guy is %d\n", ssock);
@@ -258,7 +256,7 @@ main( int argc, char *argv[] )
 				else
 				{
 					buf[cc] = '\0';
-					// printf( "The User%d says: %s\n", fd, buf );
+					printf( "The User%d says: %s\n", fd, buf );
 					char *original = (char *) malloc (sizeof(char) * strlen(buf));
 					strcpy(original, buf);
 					strcat(original, "\n");
@@ -302,7 +300,7 @@ main( int argc, char *argv[] )
 								struct Tag* Tag = temp->tag;
 								while(Tag != NULL) {
 									if(strcmp(Tag->tagName,newTag) == 0) {
-										write(temp->fd, response, strlen(response));
+										write(temp->fd, original, strlen(original));
 									}
 									Tag = Tag->next;
 								}
@@ -316,7 +314,7 @@ main( int argc, char *argv[] )
 							int i;
 							for(i = 0; i < usersCount; i++) {
 								if(temp->all == true) {
-									write(temp->fd, response, strlen(response));
+									write(temp->fd, original, strlen(original));
 								}
 								temp = temp->next;
 							}
@@ -370,21 +368,18 @@ main( int argc, char *argv[] )
 							}
 							i++;
 						}
-
 						j = 0;
 						while (original[i] != '/') {
 							len[j] = original[i];
 							i++;
 							j++;
 						}
-
 						len[j] = '\0';
 						header = i;
 						i++;
 						size = atol(len);
 						char *ibuffer = (char *) malloc (sizeof(char) * size);
 						j = 0;
-
 						while (j < size) {
 							char temp[BUFSIZE];
 							read(fd, temp, BUFSIZE);
@@ -396,22 +391,13 @@ main( int argc, char *argv[] )
 								j++;
 							}
 						}
-
 						printf("Starting to send...\n");
 						// MARK: --Writing the image
 						int k;
 						char send[cc];
-						printf("HEADER: ");
-						for(k = 0; k < cc; k++) {
+						for(k = 0; k < cc; k++)
 							send[k] = original[k];
-							printf("%c", send[k]);
-						}
-						printf("\n");
-						write(fd, send, cc);
-						write(fd, ibuffer, size);
 						i = 0;
-						int iteration = 0;
-
 						if (newTag[0] == '#') {
 							struct Client *user = users;
 							while (user != NULL) {
@@ -445,5 +431,6 @@ main( int argc, char *argv[] )
 				}
 			}
 		}
+		// FD_CLR( msock, &afds );
 	}
 }

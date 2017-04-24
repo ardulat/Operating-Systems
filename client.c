@@ -94,7 +94,7 @@ void *writeThread ( void *arg ) {
       rest[strlen(rest)] = '\0';
       int j = 0;
       while (rest[j] != '\0') {
-        printf("%c\n", rest[j]);
+        // printf("%c\n", rest[j]);
         j++;
       }
       int len = j;
@@ -137,12 +137,6 @@ void *readThread ( void *arg ) {
 	// 	Start the loop for reading from the server
 	for(;;)
 	{
-		// Process before sending
-		int lastIndex = strlen(ans)-1;
-		ans[lastIndex] = '\r';
-		ans[lastIndex+1] = '\n';
-		ans[lastIndex+2] = '\0';
-
 		// Read the echo and print it out to the screen
 		if ( (cc = read( csock, ans, BUFSIZE )) <= 0 ) {
 			printf( "The server has gone.\n" );
@@ -151,7 +145,6 @@ void *readThread ( void *arg ) {
 		}
 		else {
       ans[cc] = '\0';
-			// Everything is OK (User is still online)
       char *cmd, *original;
       original = (char *) malloc (sizeof(char) * strlen(ans));
       int i;
@@ -187,7 +180,21 @@ void *readThread ( void *arg ) {
   			decrypted = (char *) malloc (sizeof(char) * len);
   			for(i = 0; i < len; i++)
   				decrypted[i] = rest[i] ^ stream[i];
-        decrypted[len]='\0';
+        for(i = 0; i < len; i++)
+          printf("%c", decrypted[i]);
+        printf("\n");
+        free(decrypted);
+      }
+      else if (strcmp(cmd, "MSG") == 0) {
+        char *msg = strtok(NULL, "\0");
+        int lastIndex = strlen(msg)-1;
+        // msg[lastIndex-2] = '\n';
+        msg[lastIndex-2] = '\0';
+        if (msg[0] == '#') {
+          char *tag = strtok(msg, " ");
+          msg = strtok(NULL, "\0");
+        }
+        printf("%s\n", msg);
       }
       else {
         printf("%s", original);
