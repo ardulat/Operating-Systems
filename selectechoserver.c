@@ -139,7 +139,7 @@ void printTags(int fd) {
 		if(user->fd == fd) {
 			struct Tag* temp = user->tag;
 			while(temp != NULL) {
-					printf("%s\n", temp->tagName);
+					printf("--%s--\n", temp->tagName);
 					temp = temp->next;
 			}
 			break;
@@ -272,7 +272,7 @@ main( int argc, char *argv[] )
 						deregisterUser(fd);
 					}
 					else if (strcmp(cmd, "REGISTER") == 0) {
-						tag = strtok(NULL, "\r\n");
+						tag = strtok(NULL, " \n\r\n");
 						char *newTag = (char*) malloc (sizeof(char)*strlen(tag));
 						strcpy(newTag, tag);
 						insertTag(fd, newTag);

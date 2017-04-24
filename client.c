@@ -188,7 +188,6 @@ void *readThread ( void *arg ) {
       else if (strcmp(cmd, "MSG") == 0) {
         char *msg = strtok(NULL, "\0");
         int lastIndex = strlen(msg)-1;
-        // msg[lastIndex-2] = '\n';
         msg[lastIndex-2] = '\0';
         if (msg[0] == '#') {
           char *tag = strtok(msg, " ");
