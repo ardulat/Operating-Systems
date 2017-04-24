@@ -235,7 +235,7 @@ main( int argc, char *argv[] )
 	fflush( stdout );
 
 	// create thread for writing
-	status = pthread_create( &threads[0], NULL, writeThread, NULL );
+	status = pthread_create( &threads[0], NULL, &writeThread, NULL );
 	if ( status != 0 )
 	{
 		printf( "pthread_create error %d.\n", status );
@@ -243,7 +243,7 @@ main( int argc, char *argv[] )
 	}
 
 	// create thread for reading
-	status = pthread_create( &threads[1], NULL, readThread, NULL );
+	status = pthread_create( &threads[1], NULL, &readThread, NULL );
 	if ( status != 0 )
 	{
 		printf( "pthread_create error %d.\n", status );
