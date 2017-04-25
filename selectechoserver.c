@@ -37,13 +37,23 @@ struct Tag {
 
 struct Read {
 	int fd;
+	int cc;
 	char *original;
+};
+
+struct Write {
+	int fd;
+	int cc;
+	long size;
+	char *ibuffer;
+	char *send;
 };
 
 struct Client* users;
 int usersCount;
 int nfds;
 fd_set afds;
+fd_set rfds;
 
 void printUsers() {
 	struct Client* temp = users;
@@ -154,47 +164,33 @@ void printTags(int fd) {
 	}
 }
 
-// pthread_mutex_t mutexes[];
-//
-// void *writeThread(void *ign) {
-//
-//
-// 	// MARK: --Writing the image
-// 	int k;
-// 	char send[cc];
-// 	for(k = 0; k < cc; k++)
-// 		send[k] = original[k];
-// 	i = 0;
-// 	if (newTag[0] == '#') {
-// 		struct Client *user = users;
-// 		while (user != NULL) {
-// 			struct Tag *Tag = user->tag;
-// 			while (Tag != NULL) {
-// 				if (strcmp(Tag->tagName, newTag) == 0) {
-// 					write(user->fd, send, cc);
-// 					write(user->fd, ibuffer, size);
-// 				}
-// 				Tag = Tag->next;
-// 			}
-// 			user = user->next;
-// 		}
-// 	} else {
-// 		struct Client *user = users;
-// 		while (user != NULL) {
-// 			if (user->all == true) {
-// 				write(user->fd, send, cc);
-// 				write(user->fd, ibuffer, size);
-// 			}
-// 			user = user->next;
-// 		}
-// 	}
-// }
+pthread_mutex_t *mutexes;
+
+void *writeThread(void *ign) {
+	struct Write arg = *((struct Write *) ign);
+	int fd = arg.fd;
+	int cc = arg.cc;
+	long size = arg.size;
+	char *send = arg.send;
+	char *ibuffer = arg.ibuffer;
+
+	pthread_mutex_lock(&mutexes[fd]);
+
+	write(fd, send, cc);
+	write(fd, ibuffer, size);
+
+	pthread_mutex_unlock(&mutexes[fd]);
+
+	pthread_exit(NULL);
+}
+
+pthread_t *writingThreads;
 pthread_mutex_t rmutex;
 
 void *readThread(void *ign) {
-	// pthread_mutex_lock(&mtx);
 	struct Read arg = *((struct Read *) ign);
 	int fd = arg.fd;
+	int cc = arg.cc;
 	printf("fd = %d\n", fd);
 	char *original = arg.original;
 	printf("HEADER: %s\n", original);
@@ -220,35 +216,76 @@ void *readThread(void *ign) {
 		j++;
 	}
 	len[j] = '\0';
-	header = i;
-	i++;
 	size = atol(len);
+	printf("Size is %ld\n", size);
 	char *ibuffer = (char *) malloc (sizeof(char) * size);
-	j = 0;
-	while (j < size) {
-		char temp[BUFSIZE];
-		int many = read(fd, temp, BUFSIZE);
-		// printf("read %d\n", many);
+	long count = 0;
+	while (count < size) {
+		char temp[1];
+		int many = read(fd, temp, 1);
+		// printf("Read %ld\n",count);
+		if (many <= 0)
+			printf("Dropped byte.\n");
 		memcpy(ibuffer+many, temp, many);
-		j+= many;
+		count += many;
 	}
-	// printf("\n");
-	// j = 0;
-	// while (j < size) {
-	// 	printf("%c", ibuffer[j]);
-	// 	j++;
-	// }
 	printf("\nStarting to send...\n");
-	printf("Going to set %d\n", fd);
-	FD_SET(fd, &afds);
-	FD_ISSET(fd, &afds);
-	printf("Have set %d\n", fd);
 
-	// pthread_create(&writingTreads[fd], NULL, &writeThread, &warg);
+	// MARK: --Writing the image
+	int k;
+	char send[cc];
+	for(k = 0; k < cc; k++)
+		send[k] = original[k];
+	i = 0;
+	if (newTag[0] == '#') {
+		struct Client *user = users;
+		while (user != NULL) {
+			struct Tag *Tag = user->tag;
+			while (Tag != NULL) {
+				if (strcmp(Tag->tagName, newTag) == 0) {
+					// threads
+					struct Write toWrite;
+					toWrite.fd = user->fd;
+					toWrite.send = send;
+					toWrite.cc = cc;
+					toWrite.ibuffer = ibuffer;
+					toWrite.size = size;
+					int status = pthread_create(&writingThreads[user->fd], NULL, &writeThread, &toWrite);
+					if (status != 0)
+						printf( "pthread_create error %d.\n", status );
+				}
+				Tag = Tag->next;
+			}
+			user = user->next;
+		}
+	} else {
+		struct Client *user = users;
+		while (user != NULL) {
+			if (user->all == true) {
+				// threads
+				struct Write toWrite;
+				toWrite.fd = user->fd;
+				toWrite.send = send;
+				toWrite.cc = cc;
+				toWrite.ibuffer = ibuffer;
+				toWrite.size = size;
+				int status = pthread_create(&writingThreads[user->fd], NULL, &writeThread, &toWrite);
+				if (status != 0)
+					printf( "pthread_create error %d.\n", status );
+			}
+			user = user->next;
+		}
+	}
+
 	// pthread_join
-	// pthread_mutex_lock(&rmutex);
-
-	// pthread_mutex_unlock(&rmutex);
+	for ( j = 0; j < nfds; j++ )
+		if (FD_ISSET(j, &rfds))
+			pthread_join( writingThreads[j], NULL );
+	pthread_mutex_lock(&rmutex);
+	FD_SET(fd, &afds);
+	pthread_mutex_unlock(&rmutex);
+	printf("Completed.\n");
+	free(ibuffer);
 	pthread_exit(NULL);
 }
 
@@ -260,11 +297,11 @@ main( int argc, char *argv[] )
 	struct sockaddr_in	fsin;
 	int			msock;
 	int			ssock;
-	fd_set			rfds;
 	int			alen;
 	int			fd;
 	int			rport = 0;
 	int			cc;
+	int i;
 
 	switch (argc)
 	{
@@ -291,7 +328,10 @@ main( int argc, char *argv[] )
 
 	nfds = getdtablesize();
 	pthread_t readingThreads[nfds];
-	pthread_mutex_init(&rmutex, NULL);
+	writingThreads = (pthread_t *) malloc (sizeof(pthread_t) * nfds);
+	mutexes = (pthread_mutex_t *) malloc (sizeof(pthread_mutex_t) * nfds);
+	for (i = 0; i < nfds; i++)
+		pthread_mutex_init(&mutexes[i], NULL);
 
 	FD_ZERO(&afds);
 	FD_SET( msock, &afds );
@@ -333,7 +373,6 @@ main( int argc, char *argv[] )
 		{
 			if (fd != msock && FD_ISSET(fd, &rfds))
 			{
-				printf("Ok, next!\n");
 				// add to users linked list
 				struct Client* temp = (struct Client*) malloc (sizeof(struct Client*));
 				bool userExists = false;
@@ -466,7 +505,7 @@ main( int argc, char *argv[] )
 						struct Read arg;
 						arg.fd = fd;
 						arg.original = original;
-						printf("%d is deleted, which is arg.fd = %d\n", fd, arg.fd);
+						arg.cc = cc;
 						FD_CLR(fd, &afds);
 						int st = pthread_create(&readingThreads[fd], NULL, &readThread, &arg);
 						if (st != 0) {
