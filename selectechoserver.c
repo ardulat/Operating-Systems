@@ -154,13 +154,51 @@ void printTags(int fd) {
 		if(user->fd == fd) {
 			struct Tag* temp = user->tag;
 			while(temp != NULL) {
-					printf("--%s--\n", temp->tagName);
+					printf("%s\n", temp->tagName);
 					temp = temp->next;
 			}
 			break;
 		}
 		user = user->next;
 	}
+}
+
+char *removeTagFrom(char *str) {
+	int size = strlen(str);
+	printf("Original: %s\n", str);
+	printf("original size is %d\n", size);
+	int i = 0, j = 0, tagSize = 0, length;
+	char *temp;
+	while (str[i] != '#')
+		i++;
+	while (str[i] != ' '){
+		i++;
+		tagSize++;
+	}
+	length = size - tagSize;
+	printf("without tag length is %d\n", length);
+	temp = (char *) malloc (sizeof(char) * length);
+	i = 0;
+	while (str[i] != '#') {
+		temp[j] = str[i];
+		i++;
+		j++;
+	}
+	while (str[i] != ' ') {
+		i++;
+	}
+	i++;
+	while (str[i] != '\0') {
+		temp[j] = str[i];
+		i++;
+		j++;
+	}
+
+	temp[length] = '\0';
+
+	printf("temp is %s\n", temp);
+
+	return temp;
 }
 
 pthread_mutex_t *mutexes;
@@ -214,6 +252,7 @@ void *readThread(void *ign) {
 		i++;
 		j++;
 	}
+	printf("ORIGINAL: %s\n", original);
 	len[j] = '\0';
 	size = atol(len);
 	printf("Size is %ld\n", size);
@@ -236,9 +275,11 @@ void *readThread(void *ign) {
 	}
 	original[k]='/';
 	original[k+1]='\0';
-	i = 0;
+	printf("Tag is --%s--\n", newTag);
 	if (newTag[0] == '#') {
 		struct Client *user = users;
+		original = removeTagFrom(original);
+		printf("%s\n", original);
 		while (user != NULL) {
 			struct Tag *Tag = user->tag;
 			while (Tag != NULL) {
@@ -248,7 +289,6 @@ void *readThread(void *ign) {
 					toWrite.fd = user->fd;
 					toWrite.original = original;
 					toWrite.ibuffer = ibuffer;
-
 					int status = pthread_create(&writingThreads[user->fd], NULL, &writeThread, &toWrite);
 					if (status != 0)
 						printf( "pthread_create error %d.\n", status );
@@ -440,6 +480,7 @@ main( int argc, char *argv[] )
 							strcpy(newTag, tag);
 							response = strtok(NULL, "\r\n");
 							response = strcat(response, "\n");
+							original = removeTagFrom(original);
 							// find all registered users
 							struct Client* temp = users;
 							int i;
