@@ -43,10 +43,9 @@ struct Read {
 
 struct Write {
 	int fd;
-	int cc;
 	long size;
 	char *ibuffer;
-	char *send;
+	char *original;
 };
 
 struct Client* users;
@@ -169,15 +168,15 @@ pthread_mutex_t *mutexes;
 void *writeThread(void *ign) {
 	struct Write arg = *((struct Write *) ign);
 	int fd = arg.fd;
-	int cc = arg.cc;
 	long size = arg.size;
-	char *send = arg.send;
+	char *original = arg.original;
 	char *ibuffer = arg.ibuffer;
 
 	pthread_mutex_lock(&mutexes[fd]);
 
-	write(fd, send, cc);
-	write(fd, ibuffer, size);
+	write(fd, original, strlen(original));
+	sleep(1);
+	write(fd, ibuffer, size+2);
 
 	pthread_mutex_unlock(&mutexes[fd]);
 
@@ -218,24 +217,25 @@ void *readThread(void *ign) {
 	len[j] = '\0';
 	size = atol(len);
 	printf("Size is %ld\n", size);
-	char *ibuffer = (char *) malloc (sizeof(char) * size);
+	char *ibuffer = (char *) malloc (sizeof(char) * (size+1));
 	long count = 0;
 	while (count < size) {
-		char temp[1];
-		int many = read(fd, temp, 1);
-		// printf("Read %ld\n",count);
+		int many = read(fd, ibuffer+count, BUFSIZE);
 		if (many <= 0)
 			printf("Dropped byte.\n");
-		memcpy(ibuffer+many, temp, many);
 		count += many;
 	}
 	printf("\nStarting to send...\n");
 
 	// MARK: --Writing the image
-	int k;
+	int k=0;
 	char send[cc];
-	for(k = 0; k < cc; k++)
-		send[k] = original[k];
+	while(original[k]!='/' ){
+		send[k]=original[k];
+		k++;
+	}
+	original[k]='/';
+	original[k+1]='\0';
 	i = 0;
 	if (newTag[0] == '#') {
 		struct Client *user = users;
@@ -246,10 +246,9 @@ void *readThread(void *ign) {
 					// threads
 					struct Write toWrite;
 					toWrite.fd = user->fd;
-					toWrite.send = send;
-					toWrite.cc = cc;
+					toWrite.original = original;
 					toWrite.ibuffer = ibuffer;
-					toWrite.size = size;
+
 					int status = pthread_create(&writingThreads[user->fd], NULL, &writeThread, &toWrite);
 					if (status != 0)
 						printf( "pthread_create error %d.\n", status );
@@ -265,11 +264,10 @@ void *readThread(void *ign) {
 				// threads
 				struct Write toWrite;
 				toWrite.fd = user->fd;
-				toWrite.send = send;
-				toWrite.cc = cc;
+				toWrite.original = original;
 				toWrite.ibuffer = ibuffer;
 				toWrite.size = size;
-				int status = pthread_create(&writingThreads[user->fd], NULL, &writeThread, &toWrite);
+				int status = pthread_create(&writingThreads[user->fd], NULL, writeThread, &toWrite);
 				if (status != 0)
 					printf( "pthread_create error %d.\n", status );
 			}
@@ -284,6 +282,7 @@ void *readThread(void *ign) {
 	pthread_mutex_lock(&rmutex);
 	FD_SET(fd, &afds);
 	pthread_mutex_unlock(&rmutex);
+
 	printf("Completed.\n");
 	free(ibuffer);
 	pthread_exit(NULL);
@@ -512,11 +511,12 @@ main( int argc, char *argv[] )
 							printf("Error creating a thread.\n");
 							FD_SET(fd, &afds);
 						}
+						pthread_join(readingThreads[fd],NULL);
 					}
-					else {
-						response = "Oops! Sorry, I can't understand you.\n";
-						write(fd, response, strlen(response));
-					}
+					//else {
+					//	response = "Oops! Sorry, I can't understand you.\n";
+					//	write(fd, response, strlen(response));
+				//	}
 				}
 			}
 		}
